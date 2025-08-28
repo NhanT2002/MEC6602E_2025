@@ -1,3 +1,5 @@
-N = 100 #Number of points
-c = 1 #Convection speed
-CFL = 1
+N = 101     # Number of points
+c = 1       # Convection speed
+CFL = 0.1
+t_final = 3.0  # Final time
+output_filename = output_CFL01.txt

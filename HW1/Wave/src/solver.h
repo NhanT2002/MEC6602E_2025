@@ -3,9 +3,11 @@
 
 #include <vector>
 #include <tuple>
+#include "parameters.h"
 
 
-void explicitBackward(const std::vector<double>& x, std::vector<double>& u);
-void explicitForward(const std::vector<double>& x, std::vector<double>& u);
+void explicitBackward(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
+
+void explicitForward(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
 
 #endif // SOLVER_H
