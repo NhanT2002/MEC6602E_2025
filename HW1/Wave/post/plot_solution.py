@@ -2,40 +2,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-output_filename = '../output_CFL05.txt'
+import imageio
+
+
+output_filename = '../output_CFL1.txt'
 data = np.loadtxt(output_filename)
 
 x = data[0, 1:]
 u = data[1:, 1:]
 t = data[1:, 0]
 
-# If u is 1D (single time step), make it 2D for consistency
-if u.ndim == 1:
-    u = u[np.newaxis, :]
+def fplot(i):
+    fig,ax = plt.subplots(figsize=(8,6))
+    ax.plot(x, u[i])
+    ax.set_title(f'Temps = {t[i]:.2f} secondes')
+    ax.set_xlabel('Position (x)')
+    ax.set_ylabel('Amplitude (u)')
+    ax.yaxis.set_label_coords(-0.1, 0.5)
+    ax.set_xlim(np.min(x), np.max(x))
+    ax.set_ylim(np.min(u[i]), 1.1*np.max(u[i]))
+    ax.grid()
+    return fig
 
-fig, ax = plt.subplots()
-line, = ax.plot([], [], lw=2)
-time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='none', alpha=1.0))
-ax.set_xlim(np.min(x), np.max(x))
-ax.set_ylim(np.min(u), 1.1*np.max(u))
-ax.set_xlabel('x')
-ax.set_ylabel('u')
-ax.set_title('Wave Solution Evolution')
-ax.grid(True)
-
-def init():
-    line.set_data([], [])
-    time_text.set_text('')
-    return line, time_text
-
-def animate(i):
-    line.set_data(x, u[i])
-    time_text.set_text(f'time = {t[i]:.3f}')
-    return line, time_text
-
-ani = animation.FuncAnimation(fig, animate, frames=u.shape[0], init_func=init,
-                              blit=True, interval=50)
+frames = []
+for i in range(len(t)):
+    fig = fplot(i)
+    fig.canvas.draw()
+    frames.append(np.array(fig.canvas.renderer._renderer))
+    plt.close("all")
 
 gif_filename = output_filename.split('.')[-2].split("/")[-1] + '.gif'
-ani.save(gif_filename, writer='pillow')
+imageio.mimsave(gif_filename, frames, fps=20)
 print(f'GIF saved as {gif_filename}')
+

@@ -10,4 +10,6 @@ void explicitBackward(parameters& params, const std::vector<double>& u, std::vec
 
 void explicitForward(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
 
+void forwardTimeCenteredSpace(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
+
 #endif // SOLVER_H

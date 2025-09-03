@@ -96,7 +96,9 @@ int main(int argc, char* argv[]) {
     writeSolutionToFile(params.output_filename_, 0, x);
     for (double t = 0; t < t_final; t += dt) {
         writeSolutionToFile(params.output_filename_, t, u);
-        explicitBackward(params, u, u_np1);
+        // explicitBackward(params, u, u_np1);
+        // explicitForward(params, u, u_np1);
+        forwardTimeCenteredSpace(params, u, u_np1);
         u = u_np1;
     }
 
