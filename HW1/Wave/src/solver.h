@@ -12,4 +12,10 @@ void explicitForward(parameters& params, const std::vector<double>& u, std::vect
 
 void forwardTimeCenteredSpace(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
 
+void leapFrog(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1, std::vector<double>& u_nm1);
+
+void laxWendroff(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
+
+void lax(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
+
 #endif // SOLVER_H

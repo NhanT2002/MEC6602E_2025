@@ -7,10 +7,11 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <algorithm>
 #include "solver.h"
 #include "parameters.h"
 
-std::tuple<int, double, double, double, std::string> readInputFile(const std::string& filename) {
+std::tuple<int, double, double, double, std::string, std::string> readInputFile(const std::string& filename) {
     std::ifstream input_file(filename);
     if (!input_file) {
         std::cerr << "Error opening input file: " << filename << std::endl;
@@ -36,8 +37,9 @@ std::tuple<int, double, double, double, std::string> readInputFile(const std::st
     double CFL = std::stod(values[2]);
     double t_final = std::stod(values[3]);
     std::string output_filename = values[4];
+    std::string algorithm = values[5];
 
-    return {N, c, CFL, t_final, output_filename};
+    return {N, c, CFL, t_final, output_filename, algorithm};
 }
 
 std::tuple<std::vector<double>, std::vector<double>> initializeWaveFields(int N, double xi, double xf) {
@@ -82,7 +84,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Input file: " << input_filename << std::endl;
 
-    auto [N, c, CFL, t_final, output_filename] = readInputFile(input_filename);
+    auto [N, c, CFL, t_final, output_filename, algorithm] = readInputFile(input_filename);
 
     auto [x, u] = initializeWaveFields(N, 0.0, M_PI);
 
@@ -91,16 +93,94 @@ int main(int argc, char* argv[]) {
     parameters params(N, c, CFL, t_final, dx, dt, output_filename);
     params.print();
 
+
+    std::vector<std::string> valid_algorithms = {"explicitBackward", "explicitForward", "forwardTimeCenteredSpace", "leapFrog",
+                                                 "laxWendroff", "lax"};
+    if (std::find(valid_algorithms.begin(), valid_algorithms.end(), algorithm) == valid_algorithms.end()) {
+        std::cerr << "Invalid algorithm specified: " << algorithm << std::endl;
+        std::cerr << "Valid options are: ";
+        for (const auto& alg : valid_algorithms) {
+            std::cerr << alg << "  ";
+        }
+        std::cerr << std::endl;
+        return 1;
+    }
+    std::cout << "Using algorithm: " << algorithm << std::endl;
+    
+
+
     std::vector<double> u_np1(N);
     std::ofstream clear_file(params.output_filename_, std::ios::trunc);
     writeSolutionToFile(params.output_filename_, 0, x);
-    for (double t = 0; t < t_final; t += dt) {
-        writeSolutionToFile(params.output_filename_, t, u);
-        // explicitBackward(params, u, u_np1);
-        // explicitForward(params, u, u_np1);
-        forwardTimeCenteredSpace(params, u, u_np1);
-        u = u_np1;
+    if (algorithm == "explicitBackward") {
+        for (double t = 0; t < t_final; t += dt) {
+            writeSolutionToFile(params.output_filename_, t, u);
+            explicitBackward(params, u, u_np1);
+            u = u_np1;
+        }
+        writeSolutionToFile(params.output_filename_, t_final, u);
+    } else if (algorithm == "explicitForward") {
+        for (double t = 0; t < t_final; t += dt) {
+            writeSolutionToFile(params.output_filename_, t, u);
+            explicitForward(params, u, u_np1);
+            u = u_np1;
+        }
+        writeSolutionToFile(params.output_filename_, t_final, u);
+    } else if (algorithm == "forwardTimeCenteredSpace") {
+        for (double t = 0; t < t_final; t += dt) {
+            writeSolutionToFile(params.output_filename_, t, u);
+            forwardTimeCenteredSpace(params, u, u_np1);
+            u = u_np1;
+        }
+        writeSolutionToFile(params.output_filename_, t_final, u);
+    } else if (algorithm == "leapFrog") {
+        std::vector<double> u_nm1(N);
+        // Initialisation de u_nm1 avec forwardTimeCenteredSpace
+        // %%%%%%%%%%%%%%% Est-ce qu'on devrait writeSolutionToFile cette étape? %%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%% En ce moment, on considère que la condition intiale est appliquée au temps n-1 %%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%% et que l'initialisation se fait entre les temps -1 et 0 %%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%% (condition initiale t_-1 non enregistrée) %%%%%%%%%%%%%%%
+        u_nm1 = u;
+        forwardTimeCenteredSpace(params, u_nm1, u);
+        for (double t = 0; t < t_final; t += dt) {
+            writeSolutionToFile(params.output_filename_, t, u);
+            leapFrog(params, u, u_np1, u_nm1);
+            u_nm1 = u;
+            u = u_np1;
+        }
+        writeSolutionToFile(params.output_filename_, t_final, u);
+    } else if (algorithm == "laxWendroff") {
+        for (double t = 0; t < t_final; t += dt) {
+            writeSolutionToFile(params.output_filename_, t, u);
+            laxWendroff(params, u, u_np1);
+            u = u_np1;
+        }
+        writeSolutionToFile(params.output_filename_, t_final, u);
+    } else if (algorithm == "lax") {
+        for (double t = 0; t < t_final; t += dt) {
+            writeSolutionToFile(params.output_filename_, t, u);
+            lax(params, u, u_np1);
+            u = u_np1;
+        }
+        writeSolutionToFile(params.output_filename_, t_final, u);
     }
+
+
+
+
+    // std::vector<double> u_np1(N);
+    // std::vector<double> u_nm1(N);
+    // std::ofstream clear_file(params.output_filename_, std::ios::trunc);
+    // writeSolutionToFile(params.output_filename_, 0, x);
+    // for (double t = 0; t < t_final; t += dt) {
+    //     writeSolutionToFile(params.output_filename_, t, u);
+    //     // explicitBackward(params, u, u_np1);
+    //     // explicitForward(params, u, u_np1);
+    //     forwardTimeCenteredSpace(params, u, u_np1);
+    //     // leapFrog(params, u, u_np1, u_nm1);
+    //     u_nm1 = u;
+    //     u = u_np1;
+    // }
 
     return 0;
 }
