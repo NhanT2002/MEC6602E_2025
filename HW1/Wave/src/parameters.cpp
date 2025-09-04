@@ -1,8 +1,8 @@
 #include "parameters.h"
 #include <iostream>
 
-parameters::parameters(int N, double c, double CFL, double t_final, double dx, double dt, const std::string& output_filename)
-    : N_(N), c_(c), CFL_(CFL), t_final_(t_final), output_filename_(output_filename), dx_(dx), dt_(dt) {
+parameters::parameters(unsigned int N, double c, double CFL, double t_final, double dx, double dt, const std::string& output_filename, double theta)
+    : N_(N), c_(c), CFL_(CFL), t_final_(t_final), output_filename_(output_filename), dx_(dx), dt_(dt), theta_(theta) {
         alpha_ = c_ * dt_ / dx_;
     }
 

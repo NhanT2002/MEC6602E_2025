@@ -18,4 +18,8 @@ void laxWendroff(parameters& params, const std::vector<double>& u, std::vector<d
 
 void lax(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
 
+void hybridExplicitImplicit(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
+
+void rungeKutta4(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
+
 #endif // SOLVER_H
