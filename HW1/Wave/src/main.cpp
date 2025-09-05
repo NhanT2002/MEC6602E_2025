@@ -88,6 +88,45 @@ void writeSolutionToFile(const std::string& filename, const double t, const std:
     output_file << std::endl;
 }
 
+void writeObservationToFile(const std::string& filename, const double t_obs) {
+    
+    std::string filename_obs = filename;
+    size_t pos = filename_obs.find_last_of('.'); 
+    filename_obs.insert(pos, "_obs"); 
+
+    std::ifstream input_file(filename);
+    std::ofstream obs_file(filename_obs, std::ios::trunc);
+
+    if (!input_file) {
+        std::cerr << "Error opening output file: " << filename << std::endl;
+        return;
+    }
+
+    if (!obs_file) {
+        std::cerr << "Error opening output_obs file: " << filename_obs << std::endl;
+        return;
+    }
+
+    std::string line;
+    std::getline(input_file, line);
+    obs_file << line << std::endl;
+    while (std::getline(input_file, line)) {
+        std::istringstream iss(line);
+        double t;
+        iss >> t; 
+        if (t >= t_obs) {
+            obs_file << line << std::endl; 
+            break;
+        }
+    }
+
+    input_file.close();
+    obs_file.close();
+}
+
+
+
+
 int main(int argc, char* argv[]) {
     // Ensure the input file is passed as a command line argument
     if (argc < 2) {
@@ -102,12 +141,17 @@ int main(int argc, char* argv[]) {
 
     auto [N, c, CFL, t_final, output_filename, algorithm, theta] = readInputFile(input_filename);
 
-    auto [x, u] = initializeWaveFields(N, 0.0, M_PI);
+    double xi = 0.0;
+    double xf = M_PI;
+    auto [x, u] = initializeWaveFields(N, xi, xf);
 
     double dx = (x[1] - x[0]);
     double dt = CFL * dx / c;
     parameters params(N, c, CFL, t_final, dx, dt, output_filename, theta);
     params.print();
+
+    double x_obs = 2.5;
+    double t_obs = (x_obs - (1.0 + 0.5) / 2.0) / params.c_;
 
 
     std::vector<std::string> valid_algorithms = {"explicitBackward", "explicitForward", "forwardTimeCenteredSpace", "leapFrog",
@@ -195,6 +239,8 @@ int main(int argc, char* argv[]) {
         writeSolutionToFile(params.output_filename_, t_final, u);
     }
 
+
+    writeObservationToFile(params.output_filename_, t_obs);
 
     return 0;
 }
