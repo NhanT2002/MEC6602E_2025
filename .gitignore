@@ -4,6 +4,9 @@
 *.gif
 *.txt
 
+*/bin/
+*/build/
+
 # Compiled Object files
 *.slo
 *.lo
