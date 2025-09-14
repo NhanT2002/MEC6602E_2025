@@ -51,3 +51,21 @@ plt.ylabel(r"$|G|^2$")
 plt.title("Stability Analysis of Forward Euler - Centered Space Method")
 plt.grid()
 plt.legend()
+
+# Leapfrog - Centered Space method for the 1D wave equation
+def G_leapfrog_centered(sigma, x) :
+    g_complex_plus = -sigma*1j*np.sin(x) + np.emath.sqrt(1 - sigma**2 * np.sin(x)**2)
+    g_complex_minus = -sigma*1j*np.sin(x) - np.emath.sqrt(1 - sigma**2 * np.sin(x)**2)
+    return g_complex_plus.real**2 + g_complex_plus.imag**2, g_complex_minus.real**2 + g_complex_minus.imag**2
+
+plt.figure()
+sigma_values = [0.0, 0.5, 1.0, 1.1]
+for sigma in sigma_values:
+    G_plus_values, G_minus_values = G_leapfrog_centered(sigma, x)
+    plt.plot(x, G_plus_values, label=f'σ = {sigma} (plus)')
+    plt.plot(x, G_minus_values, label=f'σ = {sigma} (minus)')
+plt.xlabel(r"$k_m\Delta x$")
+plt.ylabel(r"$|G|^2$")
+plt.title("Stability Analysis of Leapfrog - Centered Space Method")
+plt.grid()
+plt.legend()
