@@ -201,7 +201,7 @@ int main(int argc, char* argv[]) {
         // %%%%%%%%%%%%%%% et que l'initialisation se fait entre les temps -1 et 0 %%%%%%%%%%%%%%%
         // %%%%%%%%%%%%%%% (condition initiale t_-1 non enregistrée) %%%%%%%%%%%%%%%
         u_nm1 = u;
-        forwardTimeCenteredSpace(params, u_nm1, u);
+        explicitBackward(params, u_nm1, u);
         for (double t = 0; t < t_final; t += dt) {
             writeSolutionToFile(params.output_filename_, t, u);
             leapFrog(params, u, u_np1, u_nm1);
