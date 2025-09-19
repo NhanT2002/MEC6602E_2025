@@ -19,7 +19,10 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> initia
 
 std::tuple<double, double, double, double> primitiveVariables(double Q1, double Q2, double Q3, double A, double gamma);
 
-void updateBoundaryConditions(parameters& params, std::vector<double>& Q1, std::vector<double>& Q2, std::vector<double>& Q3);
+void updateBoundaryConditions(parameters& params, const std::vector<double>& x, const std::vector<double>& A,
+    std::vector<double>& Q1, std::vector<double>& Q2, std::vector<double>& Q3,
+    std::vector<double>& E1, std::vector<double>& E2, std::vector<double>& E3, 
+    std::vector<double>& S1, std::vector<double>& S2, std::vector<double>& S3);
 
 double l2Norm(const std::vector<double>& u_np1, const std::vector<double>& u_n);
 

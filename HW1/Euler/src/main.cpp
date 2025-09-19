@@ -11,6 +11,7 @@
 #include "solver.h"
 #include "parameters.h"
 #include "helper.h"
+#include "writeSolution.h"
 
 std::tuple<int, int, double, int, std::string, std::string, double> readInputFile(const std::string& filename) {
     std::ifstream input_file(filename);
@@ -84,7 +85,7 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "Using algorithm: " << algorithm << std::endl;
 
-    double dx = (10 - 0) / (N - 1);
+    double dx = (10.0 - 0.0) / (N - 1);
 
     parameters params(N, outletBoundaryCondition, CFL, dx, output_filename, theta);
     params.print();
@@ -93,41 +94,59 @@ int main(int argc, char* argv[]) {
     auto [E1, E2, E3] = initializeE(params, A, Q1, Q2, Q3);
     auto [S1, S2, S3] = initializeS(params, x, A, Q1, Q2, Q3);
 
-    printVector(x, "x");
-    printVector(A, "A");
-    printVector(Q1, "Q1");
-    printVector(Q2, "Q2");
-    printVector(Q3, "Q3");
-    printVector(E1, "E1");
-    printVector(E2, "E2");
-    printVector(E3, "E3");
-    printVector(S1, "S1");
-    printVector(S2, "S2");
-    printVector(S3, "S3");
-
-    for (unsigned int i = 0; i < params.N_; ++i) {
-        auto [rho, u, e, p] = primitiveVariables(Q1[i], Q2[i], Q3[i], A[i], params.gamma_);
-        std::cout << "Cell " << i << ": rho = " << rho << ", u = " << u << ", e = " << e << ", p = " << p << std::endl;
-    }
-
     double res1 = 1e12;
     double res2 = 1e12;
     double res3 = 1e12;
+    double firstRes1 = 0.0;
+    double firstRes2 = 0.0;
+    double firstRes3 = 0.0;
     int it = 1;
 
-    if (algorithm == "macCormack") {
-        while (res1 > 1e-12) {
-            std::vector<double> Q1_np1(params.N_);
-            std::vector<double> Q2_np1(params.N_);
-            std::vector<double> Q3_np1(params.N_);
+    std::vector<double> res1_history;
+    std::vector<double> res2_history;
+    std::vector<double> res3_history;
 
-            updateBoundaryConditions(params, Q1, Q2, Q3);
+    if (algorithm == "macCormack") {
+        std::vector<double> Q1_np1(params.N_+2);
+        std::vector<double> Q2_np1(params.N_+2);
+        std::vector<double> Q3_np1(params.N_+2);
+        std::vector<double> rhorho(params.N_+2);
+        std::vector<double> uu(params.N_+2);
+        std::vector<double> ee(params.N_+2);
+        std::vector<double> pp(params.N_+2);
+        std::vector<double> machmach(params.N_+2);
+        while (res1 > 1e-12) {
+
+            updateBoundaryConditions(params, x, A, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3);
 
             macCormack(params, x, A, Q1, Q2, Q3, Q1_np1, Q2_np1, Q3_np1, E1, E2, E3, S1, S2, S3);
+
+            for (unsigned int i = 1; i < params.N_+1; ++i) {
+                auto [rho, u, e, p] = primitiveVariables(Q1_np1[i], Q2_np1[i], Q3_np1[i], A[i], params.gamma_);
+                rhorho[i] = rho;
+                uu[i] = u;
+                ee[i] = e;
+                pp[i] = p;
+                machmach[i] = u / std::sqrt(params.gamma_ * p / rho);
+            }
 
             res1 = l2Norm(Q1_np1, Q1);
             res2 = l2Norm(Q2_np1, Q2);
             res3 = l2Norm(Q3_np1, Q3);
+
+            if (it == 1) {
+                firstRes1 = res1;
+                firstRes2 = res2;
+                firstRes3 = res3;
+            }
+
+            res1 /= firstRes1;
+            res2 /= firstRes2;
+            res3 /= firstRes3;
+
+            res1_history.push_back(res1);
+            res2_history.push_back(res2);
+            res3_history.push_back(res3);
 
             std::cout << "Iteration " << it << " res: " << res1 << " " << res2 << " " << res3 << std::endl;
 
@@ -135,8 +154,26 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
+            Q1 = Q1_np1;
+            Q2 = Q2_np1;
+            Q3 = Q3_np1;
+
+
+            auto [E1_new, E2_new, E3_new] = initializeE(params, A, Q1, Q2, Q3);
+            auto [S1_new, S2_new, S3_new] = initializeS(params, x, A, Q1, Q2, Q3);
+
+            E1 = E1_new;
+            E2 = E2_new;
+            E3 = E3_new;
+            S1 = S1_new;
+            S2 = S2_new;
+            S3 = S3_new;
+
             it++;
         }
+
+        writeSolution(x, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3, rhorho, uu, pp, ee, machmach, params.output_filename_);
+        writeConvergenceHistory(res1_history, res2_history, res3_history, "convergence_" + params.output_filename_);
     }
     
 

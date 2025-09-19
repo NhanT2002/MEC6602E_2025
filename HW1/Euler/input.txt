@@ -1,6 +1,6 @@
-N = 10 #Number of points
+N = 101 #Number of points
 outletBoundaryCondition = 1 #1 for supersonic outlet | 2 for subsonic with a back pressure
-CFL = 1
-it_max = 100
-output_filename = output_CFL1.txt
+CFL = 1.0
+it_max = 20000
+output_filename = output.txt
 algorithm = macCormack
