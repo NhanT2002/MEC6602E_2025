@@ -15,6 +15,7 @@ class parameters {
     double alpha_;
     double theta_;
     double Mach_;
+    double pBackRatio_ = 1.9;
     double cInf_;
     double gamma_ = 1.4;
     double rhoInf_;
