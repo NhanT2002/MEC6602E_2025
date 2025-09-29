@@ -12,6 +12,6 @@ void writeSolution(const std::vector<double>& x,
                    const std::vector<double>& e, const std::vector<double>& mach,
                    const std::string& filename);
 
-void writeConvergenceHistory(const std::vector<double>& res1, const std::vector<double>& res2, const std::vector<double>& res3, const std::string& filename);
+void writeConvergenceHistory(const std::vector<double>& time_history, const std::vector<double>& res1, const std::vector<double>& res2, const std::vector<double>& res3, const std::string& filename);
 
 #endif // WRITE_SOLUTION_H

@@ -12,6 +12,8 @@
 #include "parameters.h"
 #include "helper.h"
 #include "writeSolution.h"
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 std::tuple<int, int, double, int, std::string, std::string, double> readInputFile(const std::string& filename) {
     std::ifstream input_file(filename);
@@ -102,24 +104,120 @@ int main(int argc, char* argv[]) {
     double firstRes3 = 0.0;
     int it = 1;
 
+    std::vector<double> time_history;
     std::vector<double> res1_history;
     std::vector<double> res2_history;
     std::vector<double> res3_history;
 
     if (algorithm == "macCormack") {
-        std::vector<double> Q1_np1(params.N_+2);
-        std::vector<double> Q2_np1(params.N_+2);
-        std::vector<double> Q3_np1(params.N_+2);
+        std::vector<double> Q1_np1 = Q1;
+        std::vector<double> Q2_np1 = Q2;
+        std::vector<double> Q3_np1 = Q3;
         std::vector<double> rhorho(params.N_+2);
         std::vector<double> uu(params.N_+2);
         std::vector<double> ee(params.N_+2);
         std::vector<double> pp(params.N_+2);
         std::vector<double> machmach(params.N_+2);
+
+        auto start_time = std::chrono::high_resolution_clock::now();
         while (res1 > 1e-12) {
 
             updateBoundaryConditions(params, x, A, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3);
 
+            // printVector(Q1, "Q1");
+            // printVector(Q2, "Q2");
+            // printVector(Q3, "Q3");
+
             macCormack(params, x, A, Q1, Q2, Q3, Q1_np1, Q2_np1, Q3_np1, E1, E2, E3, S1, S2, S3);
+
+            // printVector(Q1_np1, "Q1_np1");
+            // printVector(Q2_np1, "Q2_np1");
+            // printVector(Q3_np1, "Q3_np1");
+
+            for (unsigned int i = 1; i < params.N_+1; ++i) {
+                auto [rho, u, e, p] = primitiveVariables(Q1_np1[i], Q2_np1[i], Q3_np1[i], A[i], params.gamma_);
+                rhorho[i] = rho;
+                uu[i] = u;
+                ee[i] = e;
+                pp[i] = p;
+                machmach[i] = u / std::sqrt(params.gamma_ * p / rho);
+            }
+            // printVector(rhorho, "Density");
+            // printVector(uu, "Velocity");
+            // printVector(ee, "Energy");
+            // printVector(pp, "Pressure");
+            // printVector(machmach, "Mach number");
+
+            res1 = l2Norm(Q1_np1, Q1);
+            res2 = l2Norm(Q2_np1, Q2);
+            res3 = l2Norm(Q3_np1, Q3);
+
+            if (it == 1) {
+                firstRes1 = res1;
+                firstRes2 = res2;
+                firstRes3 = res3;
+            }
+
+            res1 /= firstRes1;
+            res2 /= firstRes2;
+            res3 /= firstRes3;
+
+            res1_history.push_back(res1);
+            res2_history.push_back(res2);
+            res3_history.push_back(res3);
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end_time - start_time;
+
+            time_history.push_back(elapsed.count());
+
+            std::cout << "Time : " << elapsed.count() << " Iteration : " << it << " res: " << res1 << " " << res2 << " " << res3 << std::endl;
+
+            if (it >= it_max) {
+                break;
+            }
+
+            Q1 = Q1_np1;
+            Q2 = Q2_np1;
+            Q3 = Q3_np1;
+
+
+            auto [E1_new, E2_new, E3_new] = initializeE(params, A, Q1, Q2, Q3);
+            auto [S1_new, S2_new, S3_new] = initializeS(params, x, A, Q1, Q2, Q3);
+
+            E1 = E1_new;
+            E2 = E2_new;
+            E3 = E3_new;
+            S1 = S1_new;
+            S2 = S2_new;
+            S3 = S3_new;
+
+            it++;
+        }
+
+        writeSolution(x, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3, rhorho, uu, pp, ee, machmach, params.output_filename_);
+        writeConvergenceHistory(time_history, res1_history, res2_history, res3_history, "convergence_" + params.output_filename_);
+    }
+
+    else if (algorithm == "beamWarming") {
+        std::vector<double> Q1_np1 = Q1;
+        std::vector<double> Q2_np1 = Q2;
+        std::vector<double> Q3_np1 = Q3;
+        std::vector<double> rhorho(params.N_+2);
+        std::vector<double> uu(params.N_+2);
+        std::vector<double> ee(params.N_+2);
+        std::vector<double> pp(params.N_+2);
+        std::vector<double> machmach(params.N_+2);
+
+        Eigen::BiCGSTAB<Eigen::SparseMatrix<double>, Eigen::IncompleteLUT<double>> solver;
+        solver.setMaxIterations(1000);
+        solver.setTolerance(1e-6);
+        auto start_time = std::chrono::high_resolution_clock::now();
+        while (res1 > 1e-12) {
+
+            updateBoundaryConditions(params, x, A, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3);
+
+            beamWarming(solver, params, x, A, Q1, Q2, Q3, Q1_np1, Q2_np1, Q3_np1, E1, E2, E3, S1, S2, S3);
 
             for (unsigned int i = 1; i < params.N_+1; ++i) {
                 auto [rho, u, e, p] = primitiveVariables(Q1_np1[i], Q2_np1[i], Q3_np1[i], A[i], params.gamma_);
@@ -147,8 +245,11 @@ int main(int argc, char* argv[]) {
             res1_history.push_back(res1);
             res2_history.push_back(res2);
             res3_history.push_back(res3);
+            auto end_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end_time - start_time;
+            time_history.push_back(elapsed.count());
 
-            std::cout << "Iteration " << it << " res: " << res1 << " " << res2 << " " << res3 << std::endl;
+            std::cout << "Time : " << elapsed.count() << " Iteration : " << it << " res: " << res1 << " " << res2 << " " << res3 << std::endl;
 
             if (it >= it_max) {
                 break;
@@ -157,7 +258,6 @@ int main(int argc, char* argv[]) {
             Q1 = Q1_np1;
             Q2 = Q2_np1;
             Q3 = Q3_np1;
-
 
             auto [E1_new, E2_new, E3_new] = initializeE(params, A, Q1, Q2, Q3);
             auto [S1_new, S2_new, S3_new] = initializeS(params, x, A, Q1, Q2, Q3);
@@ -171,9 +271,8 @@ int main(int argc, char* argv[]) {
 
             it++;
         }
-
         writeSolution(x, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3, rhorho, uu, pp, ee, machmach, params.output_filename_);
-        writeConvergenceHistory(res1_history, res2_history, res3_history, "convergence_" + params.output_filename_);
+        writeConvergenceHistory(time_history, res1_history, res2_history, res3_history, "convergence_" + params.output_filename_);
     }
     
 

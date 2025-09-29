@@ -78,21 +78,27 @@ void updateBoundaryConditions(parameters& params, const std::vector<double>& x, 
     std::vector<double>& E1, std::vector<double>& E2, std::vector<double>& E3, 
     std::vector<double>& S1, std::vector<double>& S2, std::vector<double>& S3) {
     // Inlet (i=0): Supersonic inflow, all variables specified
-    Q1[0] = params.rhoInf_ * nozzleArea(0);
-    Q2[0] = params.rhoInf_ * params.uInf_ * nozzleArea(0);
-    Q3[0] = params.eInf_ * nozzleArea(0);
+    Q1[1] = params.rhoInf_ * A[1];
+    Q2[1] = params.rhoInf_ * params.uInf_ * A[1];
+    Q3[1] = params.eInf_ * A[1];
+
+    // Recompute E and S after updating Q
+    E1[1] = params.rhoInf_ * params.uInf_ * A[1];
+    E2[1] = (params.rhoInf_ * params.uInf_ * params.uInf_ + params.pInf_) * A[1];
+    E3[1] = params.uInf_ * (params.eInf_ + params.pInf_) * A[1];
+    S2[1] = params.pInf_ * (dA_dx(x[1]) );
 
     // Outlet (i=N-1)
     if (params.outletBoundaryCondition_ == 1) {
         // Supersonic outflow: all variables extrapolated
-        Q1[params.N_+1] = Q1[params.N_];
-        Q2[params.N_+1] = Q2[params.N_];
-        Q3[params.N_+1] = Q3[params.N_];
+        Q1[params.N_] = Q1[params.N_-1];
+        Q2[params.N_] = Q2[params.N_-1];
+        Q3[params.N_] = Q3[params.N_-1];
 
-        E1[params.N_+1] = E1[params.N_];
-        E2[params.N_+1] = E2[params.N_];
-        E3[params.N_+1] = E3[params.N_];
-        S2[params.N_+1] = S2[params.N_];
+        E1[params.N_] = E1[params.N_-1];
+        E2[params.N_] = E2[params.N_-1];
+        E3[params.N_] = E3[params.N_-1];
+        S2[params.N_] = S2[params.N_-1];
     } 
     else if (params.outletBoundaryCondition_ == 2) {
         // Subsonic outflow with back pressure: pressure specified, others extrapolated
@@ -105,22 +111,16 @@ void updateBoundaryConditions(parameters& params, const std::vector<double>& x, 
         const double R2 = R1 - 4*cL/(params.gamma_-1);
         const double uL = 0.5 * (R1 + R2);
         const double eL = pL / (params.gamma_ - 1) + 0.5 * rhoL * uL * uL;
-        
-        Q1[params.N_+1] = rhoL * A[params.N_];
-        Q2[params.N_+1] = rhoL * uL * A[params.N_];
-        Q3[params.N_+1] = eL * A[params.N_];
 
-        E1[params.N_+1] = rhoL * uL * A[params.N_];
-        E2[params.N_+1] = (rhoL * uL * uL + pL) * A[params.N_];
-        E3[params.N_+1] = uL * (eL + pL) * A[params.N_];
-        S2[params.N_+1] = pL * (dA_dx(x[params.N_]) );
+        Q1[params.N_] = rhoL * A[params.N_];
+        Q2[params.N_] = rhoL * uL * A[params.N_];
+        Q3[params.N_] = eL * A[params.N_];
+
+        E1[params.N_] = rhoL * uL * A[params.N_];
+        E2[params.N_] = (rhoL * uL * uL + pL) * A[params.N_];
+        E3[params.N_] = uL * (eL + pL) * A[params.N_];
+        S2[params.N_] = pL * (dA_dx(x[params.N_]) );
     }
-
-    // Recompute E and S after updating Q
-    E1[0] = params.rhoInf_ * params.uInf_ * nozzleArea(0);
-    E2[0] = (params.rhoInf_ * params.uInf_ * params.uInf_ + params.pInf_) * nozzleArea(0);
-    E3[0] = params.uInf_ * (params.eInf_ + params.pInf_) * nozzleArea(0);
-    S2[0] = params.pInf_ * (dA_dx(x[1]) );
 }
 
 double l2Norm(const std::vector<double>& u_np1, const std::vector<double>& u_n) {

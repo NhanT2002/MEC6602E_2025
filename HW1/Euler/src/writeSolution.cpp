@@ -32,16 +32,16 @@ void writeSolution(const std::vector<double>& x,
     std::cout << "Solution written to " << filename << std::endl;
 }
 
-void writeConvergenceHistory(const std::vector<double>& res1, const std::vector<double>& res2, const std::vector<double>& res3, const std::string& filename) {
+void writeConvergenceHistory(const std::vector<double>& time_history, const std::vector<double>& res1, const std::vector<double>& res2, const std::vector<double>& res3, const std::string& filename) {
     std::ofstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Error opening file for writing: " << filename << std::endl;
         return;
     }
 
-    file << "it,res1,res2,res3" << std::endl;
+    file << "time,it,res1,res2,res3" << std::endl;
     for (size_t i = 0; i < res1.size(); ++i) {
-        file << i+1 << "," << res1[i] << "," << res2[i] << "," << res3[i] << std::endl;
+        file << time_history[i] << "," << i+1 << "," << res1[i] << "," << res2[i] << "," << res3[i] << std::endl;
     }
 
     file.close();

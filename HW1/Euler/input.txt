@@ -1,6 +1,6 @@
 N = 101 #Number of points
-outletBoundaryCondition = 1 #1 for supersonic outlet | 2 for subsonic with a back pressure
-CFL = 1.0
-it_max = 20000
-output_filename = CFL1_output1.txt
-algorithm = macCormack
+outletBoundaryCondition = 2 #1 for supersonic outlet | 2 for subsonic with a back pressure
+CFL = 25.0
+it_max = 30000
+output_filename = implicit_CFL25_output1.txt
+algorithm = beamWarming

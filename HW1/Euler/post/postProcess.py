@@ -23,11 +23,12 @@ def read_solution(filename):
 
 def read_convergence_history(filename):
     data = pd.read_csv(filename)
+    time = data["time"].values
     it = data["it"].values
     res1 = data["res1"].values
     res2 = data["res2"].values
     res3 = data["res3"].values
-    return it, res1, res2, res3
+    return time, it, res1, res2, res3
 
 CFL = ["0-5", "0-75", "1"]
 CFL_float = [0.5, 0.75, 1.0]
@@ -39,7 +40,7 @@ for bc in boundaryCondition:
     plt.figure()
     for i, cfl in enumerate(CFL):
         filename = f'CFL{cfl}_output{bc}.txt'
-        x, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3, rho, u, p, e, mach = read_solution(f'../output/{filename}')
+        x, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3, rho, u, p, e, mach = read_solution(f'../output/explicit/{filename}')
         plt.plot(x, mach, label=f'CFL={CFL_float[i]}')
     plt.xlabel('Position (x)')
     plt.ylabel('Mach Number')
@@ -56,7 +57,7 @@ for bc in boundaryCondition:
     plt.figure()
     for i, cfl in enumerate(CFL):
         filename = f'CFL{cfl}_output{bc}.txt'
-        it, res1, res2, res3 = read_convergence_history(f'../output/convergence_{filename}')
+        time, it, res1, res2, res3 = read_convergence_history(f'../output/explicit/convergence_{filename}')
         plt.semilogy(it, res1, label=f'CFL={CFL_float[i]}')
     plt.xlabel('Iteration')
     plt.ylabel('Residuals Q1')
@@ -121,3 +122,29 @@ for bc in boundaryCondition:
 # plt.legend()
 # plt.grid()
 # plt.show()
+
+CFL = [1, 3, 5, 10, 15, 20, 25]
+plt.figure()
+for cfl in CFL:
+    filename = f'implicit_CFL{cfl}_output1.txt'
+    x, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3, rho, u, p, e, mach = read_solution(f'../output/implicit/{filename}')
+    plt.plot(x, mach, label=f'CFL={cfl}')
+plt.xlabel('Position (x)')
+plt.ylabel('Mach Number')
+plt.title(f'Mach Number Distribution for Implicit Scheme')
+plt.legend()
+plt.grid()
+plt.show()
+
+plt.figure()
+for cfl in CFL:
+    filename = f'implicit_CFL{cfl}_output1.txt'
+    time, it, res1, res2, res3 = read_convergence_history(f'../output/implicit/convergence_{filename}')
+
+    plt.loglog(it, res1, label=f'CFL={cfl}')
+plt.xlabel('Iteration')
+plt.ylabel('Residuals Q1')
+plt.title(f'Convergence History for Implicit Scheme')
+plt.legend()
+plt.grid()
+plt.show()
