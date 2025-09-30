@@ -95,15 +95,17 @@ void beamWarming(Eigen::BiCGSTAB<Eigen::SparseMatrix<double>, Eigen::IncompleteL
     // Assemble the linear system
     for (unsigned int i = 1; i < params.N_-1; ++i) {
         const int ii = i+1; // Offset by 1 due to ghost cells
+        const double eps_e = params.epsilon_e_*(params.dx_*params.dx_)/dt[ii]/0.125*A[ii];
+        const double eps_i = 2.5*eps_e;
         // Fill in the LHS matrix
-        LHS.block(3*i, 3*i, 3, 3) = I - dt[ii]*Bi[ii];
-        LHS.block(3*i, 3*(i-1), 3, 3) = -dt[ii]/(2*params.dx_)*Ai[ii-1];
-        LHS.block(3*i, 3*(i+1), 3, 3) = dt[ii]/(2*params.dx_)*Ai[ii+1];
-        
+        LHS.block(3*i, 3*i, 3, 3) = I - dt[ii]*Bi[ii] - eps_i*(-2)/(params.dx_*params.dx_)*I;
+        LHS.block(3*i, 3*(i-1), 3, 3) = -dt[ii]/(2*params.dx_)*Ai[ii-1] - eps_i*(1)/(params.dx_*params.dx_)*I;
+        LHS.block(3*i, 3*(i+1), 3, 3) = dt[ii]/(2*params.dx_)*Ai[ii+1] - eps_i*(1)/(params.dx_*params.dx_)*I;
+
         // Fill in the RHS vector
-        RHS(3*i) = -dt[ii]/(2*params.dx_)*(E1[ii+1] - E1[ii-1]) + dt[ii]*S1[ii];
-        RHS(3*i + 1) = -dt[ii]/(2*params.dx_)*(E2[ii+1] - E2[ii-1]) + dt[ii]*S2[ii];
-        RHS(3*i + 2) = -dt[ii]/(2*params.dx_)*(E3[ii+1] - E3[ii-1]) + dt[ii]*S3[ii];
+        RHS(3*i) = -dt[ii]/(2*params.dx_)*(E1[ii+1] - E1[ii-1]) + dt[ii]*S1[ii] + eps_e*(Q1[ii+1] - 2*Q1[ii] + Q1[ii-1])/(params.dx_*params.dx_);
+        RHS(3*i + 1) = -dt[ii]/(2*params.dx_)*(E2[ii+1] - E2[ii-1]) + dt[ii]*S2[ii] + eps_e*(Q2[ii+1] - 2*Q2[ii] + Q2[ii-1])/(params.dx_*params.dx_);
+        RHS(3*i + 2) = -dt[ii]/(2*params.dx_)*(E3[ii+1] - E3[ii-1]) + dt[ii]*S3[ii] + eps_e*(Q3[ii+1] - 2*Q3[ii] + Q3[ii-1])/(params.dx_*params.dx_);
     }
 
     // Apply boundary conditions directly in the linear system

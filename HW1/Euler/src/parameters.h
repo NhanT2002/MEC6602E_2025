@@ -10,6 +10,8 @@ class parameters {
     unsigned int N_;
     double outletBoundaryCondition_;
     double CFL_;
+    double epsilon_e_;
+    double epsilon_i_;
     std::string output_filename_;
     double dx_;
     double alpha_;
@@ -23,7 +25,7 @@ class parameters {
     double uInf_;
     double eInf_;
 
-    parameters(unsigned int N, double outletBoundaryCondition, double CFL, double dx, const std::string& output_filename, double theta);
+    parameters(unsigned int N, double outletBoundaryCondition, double CFL, double epsilon_e, double dx, const std::string& output_filename, double theta);
 
     void print() const;
 };

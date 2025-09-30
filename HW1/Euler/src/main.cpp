@@ -15,7 +15,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-std::tuple<int, int, double, int, std::string, std::string, double> readInputFile(const std::string& filename) {
+std::tuple<int, int, double, double, int, std::string, std::string, double> readInputFile(const std::string& filename) {
     std::ifstream input_file(filename);
     if (!input_file) {
         std::cerr << "Error opening input file: " << filename << std::endl;
@@ -54,12 +54,13 @@ std::tuple<int, int, double, int, std::string, std::string, double> readInputFil
         }
     }
     int N = std::stoi(values[0]);
-    double outletBoundaryCondition = std::stod(values[1]);
+    int outletBoundaryCondition = std::stod(values[1]);
     double CFL = std::stod(values[2]);
-    int it_max = std::stoi(values[3]);
-    std::string output_filename = values[4];
+    double epsilon_e = std::stod(values[3]);
+    int it_max = std::stoi(values[4]);
+    std::string output_filename = values[5];
 
-    return {N, outletBoundaryCondition, CFL, it_max, output_filename, algorithm, theta};
+    return {N, outletBoundaryCondition, CFL, epsilon_e, it_max, output_filename, algorithm, theta};
 }
 
 int main(int argc, char* argv[]) {
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Input file: " << input_filename << std::endl;
 
-    auto [N, outletBoundaryCondition, CFL, it_max, output_filename, algorithm, theta] = readInputFile(input_filename);
+    auto [N, outletBoundaryCondition, CFL, epsilon_e, it_max, output_filename, algorithm, theta] = readInputFile(input_filename);
 
     std::vector<std::string> valid_algorithms = {"macCormack", "beamWarming"};
     if (std::find(valid_algorithms.begin(), valid_algorithms.end(), algorithm) == valid_algorithms.end()) {
@@ -89,7 +90,7 @@ int main(int argc, char* argv[]) {
 
     double dx = (10.0 - 0.0) / (N - 1);
 
-    parameters params(N, outletBoundaryCondition, CFL, dx, output_filename, theta);
+    parameters params(N, outletBoundaryCondition, CFL, epsilon_e, dx, output_filename, theta);
     params.print();
 
     auto [x, A, Q1, Q2, Q3] = initializeQ(params);
