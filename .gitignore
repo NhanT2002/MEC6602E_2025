@@ -3,6 +3,7 @@
 
 *.gif
 *.txt
+*.pdf
 
 */bin/
 */build/

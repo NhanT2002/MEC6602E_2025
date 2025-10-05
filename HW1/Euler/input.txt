@@ -1,7 +1,7 @@
-N = 101 #Number of points
+N = 1001 #Number of points
 outletBoundaryCondition = 2 #1 for supersonic outlet | 2 for subsonic with a back pressure
-CFL = 1.0
-epsilon_e = 1.0
+CFL = 10.0
+epsilon_e = 0.1
 it_max = 100000
-output_filename = implicit_CFL1_e1_output2.txt
+output_filename = implicit_CFL10_output2.txt
 algorithm = beamWarming

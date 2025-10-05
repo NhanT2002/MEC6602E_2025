@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
         std::vector<double> machmach(params.N_+2);
 
         auto start_time = std::chrono::high_resolution_clock::now();
-        while (res1 > 1e-12) {
+        while (res1 > 1e-11) {
 
             updateBoundaryConditions(params, x, A, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3);
 
@@ -214,7 +214,7 @@ int main(int argc, char* argv[]) {
         solver.setMaxIterations(1000);
         solver.setTolerance(1e-6);
         auto start_time = std::chrono::high_resolution_clock::now();
-        while (res1 > 1e-12) {
+        while (res1 > 1e-11) {
 
             updateBoundaryConditions(params, x, A, Q1, Q2, Q3, E1, E2, E3, S1, S2, S3);
 
