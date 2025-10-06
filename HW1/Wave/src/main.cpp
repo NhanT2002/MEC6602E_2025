@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
 
 
     std::vector<std::string> valid_algorithms = {"explicitBackward", "explicitForward", "forwardTimeCenteredSpace", "leapFrog",
-                                                 "laxWendroff", "lax", "hybridExplicitImplicit", "rungeKutta4"};
+                                                 "laxWendroff", "lax", "hybridExplicitImplicit", "rungeKutta4", "tremblayTran"};
     if (std::find(valid_algorithms.begin(), valid_algorithms.end(), algorithm) == valid_algorithms.end()) {
         std::cerr << "Invalid algorithm specified: " << algorithm << std::endl;
         std::cerr << "Valid options are: ";
@@ -234,6 +234,13 @@ int main(int argc, char* argv[]) {
         for (double t = 0; t < t_final; t += dt) {
             writeSolutionToFile(params.output_filename_, t, u);
             rungeKutta4(params, u, u_np1);
+            u = u_np1;
+        }
+        writeSolutionToFile(params.output_filename_, t_final, u);
+    } else if (algorithm == "tremblayTran") {
+        for (double t = 0; t < t_final; t += dt) {
+            writeSolutionToFile(params.output_filename_, t, u);
+            tremblayTran(params, u, u_np1);
             u = u_np1;
         }
         writeSolutionToFile(params.output_filename_, t_final, u);

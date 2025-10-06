@@ -22,4 +22,6 @@ void hybridExplicitImplicit(parameters& params, const std::vector<double>& u, st
 
 void rungeKutta4(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
 
+void tremblayTran(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1);
+
 #endif // SOLVER_H

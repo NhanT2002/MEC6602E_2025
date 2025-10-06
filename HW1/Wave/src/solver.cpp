@@ -78,3 +78,14 @@ void rungeKutta4(parameters& params, const std::vector<double>& u, std::vector<d
         u_np1[i] = u[i] + (params.dt_ / 6.0) * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
     }
 }
+
+void tremblayTran(parameters& params, const std::vector<double>& u, std::vector<double>& u_np1) {
+    double alpha2 = params.alpha_ * params.alpha_;
+    for (unsigned int i = 0; i < params.N_; ++i) {
+        double u01 = params.alpha_ / 2.0 * (u[(i + 1) % params.N_] - u[(i - 1 + params.N_) % params.N_]);
+        double u02 = alpha2 / 2.0 * (u[(i + 1) % params.N_] - 2.0 * u[i] + u[(i - 1 + params.N_) % params.N_]);
+        double u03 = (alpha2 * params.alpha_) / 6.0 * (0.5 * u[(i + 2) % params.N_] - u[(i + 1) % params.N_] + u[(i - 1 + params.N_) % params.N_] - 0.5 * u[(i - 2 + params.N_) % params.N_]);
+        double u04 = (alpha2 * alpha2) / 24.0 * (u[(i + 2) % params.N_] - 4.0 * u[(i + 1) % params.N_] + 6.0 * u[i] - 4.0 * u[(i - 1 + params.N_) % params.N_] + u[(i - 2 + params.N_) % params.N_]);
+        u_np1[i] = u[i] - u01 + u02 - u03 + u04;
+    }
+}
