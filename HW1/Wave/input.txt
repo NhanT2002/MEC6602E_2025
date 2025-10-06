@@ -3,4 +3,4 @@ c = 1       # Convection speed
 CFL = 1.0
 t_final = 10.0  # Final time
 output_filename = output_CFL1.txt
-algorithm = leapFrog
+algorithm = laxWendroff

@@ -69,3 +69,67 @@ plt.ylabel(r"$|G|^2$")
 plt.title("Stability Analysis of Leapfrog - Centered Space Method")
 plt.grid()
 plt.legend()
+
+# Lax-Wendroff method for the 1D wave equation
+def G_lax_wendroff(sigma, x) :
+    g_complex = 1 - sigma/2*(2j*np.sin(x)) + (sigma**2)/2 * (-2 + 2*np.cos(x))
+    return g_complex.real**2 + g_complex.imag**2
+plt.figure()
+sigma_values = [0.1, 0.5, 1.0, 1.1]
+for sigma in sigma_values:
+    G_values = G_lax_wendroff(sigma, x)
+    plt.plot(x, G_values, label=f'σ = {sigma}')
+plt.xlabel(r"$k_m\Delta x$")
+plt.ylabel(r"$|G|^2$")
+plt.title("Stability Analysis of Lax-Wendroff Method")
+plt.grid()
+plt.legend()
+
+# Lax method for the 1D wave equation
+def G_lax(sigma, x) :
+    g_complex = np.cos(x) - 1j*sigma*np.sin(x)
+    return g_complex.real**2 + g_complex.imag**2
+plt.figure()
+sigma_values = [0.1, 0.5, 1.0, 1.1]
+for sigma in sigma_values:
+    G_values = G_lax(sigma, x)
+    plt.plot(x, G_values, label=f'σ = {sigma}')
+plt.xlabel(r"$k_m\Delta x$")
+plt.ylabel(r"$|G|^2$")
+plt.title("Stability Analysis of Lax Method")
+plt.grid()
+plt.legend()
+
+# Hybrid explicit-implicit method for the 1D wave equation
+def G_hybrid(sigma, x, theta) :
+    g_complex = (1 - (1-theta)*sigma*1j*np.sin(x)) / (1 + theta*sigma*1j*np.sin(x))
+    return g_complex.real**2 + g_complex.imag**2
+
+theta_values = [0.0, 0.5, 1.0]
+sigma_values = [0.5, 1.0, 1.5]
+for theta in theta_values:
+    plt.figure()
+    for sigma in sigma_values:
+        G_values = G_hybrid(sigma, x, theta)
+        plt.plot(x, G_values, label=f'σ = {sigma}')
+    plt.xlabel(r"$k_m\Delta x$")
+    plt.ylabel(r"$|G|^2$")
+    plt.title(f"Stability Analysis of Hybrid Method (θ = {theta})")
+    plt.grid()
+    plt.legend()
+
+# 2nd order space, 4th order time method for the 1D wave equation
+def G_2nd4th(sigma, x) :
+    # g_complex = 1 - sigma/2*(np.exp(1j*x) - np.exp(-1j*x)) + (sigma**2)/2*(-2 + np.exp(1j*x) + np.exp(-1j*x)) - (sigma**3)/6 * (-0.5*np.exp(-2j*x) + np.exp(-1j*x) - np.exp(1j*x) + 0.5*np.exp(2j*x)) + (sigma**4)/24 * (6 - 4*np.exp(-1j*x) + np.exp(-2j*x) + np.exp(2j*x) - 4*np.exp(1j*x))
+    g_complex = 1 - sigma*1j*np.sin(x) + sigma**2 * (np.cos(x) - 1) - sigma**3/6 * (1j * np.sin(2*x) -2j*np.sin(x)) + sigma**4/24 * (6 + 2*np.cos(2*x) - 8*np.cos(x))
+    return g_complex.real**2 + g_complex.imag**2
+plt.figure()
+sigma_values = [0.5, 1.0, 1.5]
+for sigma in sigma_values:
+    G_values = G_2nd4th(sigma, x)
+    plt.plot(x, G_values, label=f'σ = {sigma}')
+plt.xlabel(r"$k_m\Delta x$")
+plt.ylabel(r"$|G|^2$")
+plt.title("Stability Analysis of 2nd Order Space, 4th Order Time Method")
+plt.grid()
+plt.legend()
