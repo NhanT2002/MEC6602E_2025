@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({'font.size': 14})
 x = np.linspace(0, 2*np.pi, 1000)
 
 # Explicit Backward Euler method for the 1D wave equation
@@ -15,9 +16,11 @@ for sigma in sigma_values:
     plt.plot(x, G_values, label=f'σ = {sigma}')
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
-plt.title("Stability Analysis of Explicit Backward Euler Method")
+plt.title("Explicit Backward Euler Method")
 plt.grid()
 plt.legend()
+plt.tight_layout()
+plt.savefig("stability_explicit_backward_euler.pdf", format='pdf')
 
 # Explicit Forward Euler method for the 1D wave equation
 def G_explicit_forward(sigma, x) :
@@ -32,9 +35,11 @@ for sigma in sigma_values:
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
 plt.yticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-plt.title("Stability Analysis of Explicit Forward Euler Method")
+plt.title("Explicit Forward Euler Method")
 plt.grid()
 plt.legend()
+plt.tight_layout()
+plt.savefig("stability_explicit_forward_euler.pdf", format='pdf')
 
 # Forward Euler - Centered Space method for the 1D wave equation
 def G_forward_centered(sigma, x) :
@@ -48,9 +53,11 @@ for sigma in sigma_values:
     plt.plot(x, G_values, label=f'σ = {sigma}', linestyle='--' if sigma > 0 else '-')
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
-plt.title("Stability Analysis of Forward Euler - Centered Space Method")
+plt.title("Forward Euler - Centered Space Method")
 plt.grid()
 plt.legend()
+plt.tight_layout()
+plt.savefig("stability_forward_centered.pdf", format='pdf')
 
 # Leapfrog - Centered Space method for the 1D wave equation
 def G_leapfrog_centered(sigma, x) :
@@ -66,9 +73,11 @@ for sigma in sigma_values:
     plt.plot(x, G_minus_values, label=f'σ = {sigma} (minus)')
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
-plt.title("Stability Analysis of Leapfrog - Centered Space Method")
+plt.title("Leapfrog - Centered Space Method")
 plt.grid()
 plt.legend()
+plt.tight_layout()
+plt.savefig("stability_leapfrog_centered.pdf", format='pdf')
 
 # Lax-Wendroff method for the 1D wave equation
 def G_lax_wendroff(sigma, x) :
@@ -81,9 +90,11 @@ for sigma in sigma_values:
     plt.plot(x, G_values, label=f'σ = {sigma}')
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
-plt.title("Stability Analysis of Lax-Wendroff Method")
+plt.title("Lax-Wendroff Method")
 plt.grid()
 plt.legend()
+plt.tight_layout()
+plt.savefig("stability_lax_wendroff.pdf", format='pdf')
 
 # Lax method for the 1D wave equation
 def G_lax(sigma, x) :
@@ -96,9 +107,11 @@ for sigma in sigma_values:
     plt.plot(x, G_values, label=f'σ = {sigma}')
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
-plt.title("Stability Analysis of Lax Method")
+plt.title("Lax Method")
 plt.grid()
 plt.legend()
+plt.tight_layout()
+plt.savefig("stability_lax.pdf", format='pdf')
 
 # Hybrid explicit-implicit method for the 1D wave equation
 def G_hybrid(sigma, x, theta) :
@@ -114,9 +127,11 @@ for theta in theta_values:
         plt.plot(x, G_values, label=f'σ = {sigma}')
     plt.xlabel(r"$k_m\Delta x$")
     plt.ylabel(r"$|G|^2$")
-    plt.title(f"Stability Analysis of Hybrid Method (θ = {theta})")
+    plt.title(f"Hybrid Method (θ = {theta})")
     plt.grid()
     plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"stability_hybrid_theta_{theta}.pdf", format='pdf')
 
 # 2nd order space, 4th order time method for the 1D wave equation
 def G_2nd4th(sigma, x) :
@@ -130,6 +145,8 @@ for sigma in sigma_values:
     plt.plot(x, G_values, label=f'σ = {sigma}')
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
-plt.title("Stability Analysis of 2nd Order Space, 4th Order Time Method")
+plt.title("2nd Order Space, 4th Order Time Method")
 plt.grid()
 plt.legend()
+plt.tight_layout()
+plt.savefig("stability_2nd4th.pdf", format='pdf')
