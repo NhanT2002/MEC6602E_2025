@@ -32,9 +32,9 @@ std::tuple<int, double, double, double, std::string, std::string, double> readIn
                 if (iss >> theta) {
                     std::cout << "Key: " << key << ", Value: " << algorithm << ", Theta: " << theta << std::endl;
                 } else {
-                    theta = 0.0;
+                    theta = 1.0; // Default value if theta is not provided
                     if (algorithm == "hybridExplicitImplicit") {
-                        std::cout << "Theta not provided for hybridExplicitImplicit, a default value of 0.0 has been assigned" << std::endl;
+                        std::cout << "Theta not provided for hybridExplicitImplicit, a default value of 1.0 has been assigned" << std::endl;
                     } else {
                         std::cout << "Key: " << key << ", Value: " << algorithm << std::endl;
                     }

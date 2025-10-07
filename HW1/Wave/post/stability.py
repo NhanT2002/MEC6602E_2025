@@ -28,7 +28,7 @@ def G_explicit_forward(sigma, x) :
     return g_complex.real**2 + g_complex.imag**2
 
 plt.figure()
-sigma_values = [-0.5, -1.0, 0.5, 1.0]
+sigma_values = [0.25, 0.5, 1.0]
 for sigma in sigma_values:
     G_values = G_explicit_forward(sigma, x)
     plt.plot(x, G_values, label=f'σ = {sigma}')
@@ -47,10 +47,10 @@ def G_forward_centered(sigma, x) :
     return g_complex.real**2 + g_complex.imag**2
 
 plt.figure()
-sigma_values = [-1.0, -0.5, 0.0, 0.5, 1.0]
+sigma_values = [0.25, 0.5, 1.0]
 for sigma in sigma_values:
     G_values = G_forward_centered(sigma, x)
-    plt.plot(x, G_values, label=f'σ = {sigma}', linestyle='--' if sigma > 0 else '-')
+    plt.plot(x, G_values, label=f'σ = {sigma}')
 plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
 plt.title("Forward Euler - Centered Space Method")
@@ -66,7 +66,7 @@ def G_leapfrog_centered(sigma, x) :
     return g_complex_plus.real**2 + g_complex_plus.imag**2, g_complex_minus.real**2 + g_complex_minus.imag**2
 
 plt.figure()
-sigma_values = [0.0, 0.5, 1.0, 1.1]
+sigma_values = [0.25, 0.5, 1.0, 1.01]
 for sigma in sigma_values:
     G_plus_values, G_minus_values = G_leapfrog_centered(sigma, x)
     plt.plot(x, G_plus_values, label=f'σ = {sigma} (plus)')
@@ -84,7 +84,7 @@ def G_lax_wendroff(sigma, x) :
     g_complex = 1 - sigma/2*(2j*np.sin(x)) + (sigma**2)/2 * (-2 + 2*np.cos(x))
     return g_complex.real**2 + g_complex.imag**2
 plt.figure()
-sigma_values = [0.1, 0.5, 1.0, 1.1]
+sigma_values = [0.25, 0.5, 1.0, 1.1]
 for sigma in sigma_values:
     G_values = G_lax_wendroff(sigma, x)
     plt.plot(x, G_values, label=f'σ = {sigma}')
@@ -101,7 +101,7 @@ def G_lax(sigma, x) :
     g_complex = np.cos(x) - 1j*sigma*np.sin(x)
     return g_complex.real**2 + g_complex.imag**2
 plt.figure()
-sigma_values = [0.1, 0.5, 1.0, 1.1]
+sigma_values = [0.25, 0.5, 1.0, 1.1]
 for sigma in sigma_values:
     G_values = G_lax(sigma, x)
     plt.plot(x, G_values, label=f'σ = {sigma}')
@@ -119,7 +119,7 @@ def G_hybrid(sigma, x, theta) :
     return g_complex.real**2 + g_complex.imag**2
 
 theta_values = [0.0, 0.5, 1.0]
-sigma_values = [0.5, 1.0, 1.5]
+sigma_values = [0.5, 1.0, 1.5, 2.0]
 for theta in theta_values:
     plt.figure()
     for sigma in sigma_values:
@@ -139,7 +139,7 @@ def G_2nd4th(sigma, x) :
     g_complex = 1 - sigma*1j*np.sin(x) + sigma**2 * (np.cos(x) - 1) - sigma**3/6 * (1j * np.sin(2*x) -2j*np.sin(x)) + sigma**4/24 * (6 + 2*np.cos(2*x) - 8*np.cos(x))
     return g_complex.real**2 + g_complex.imag**2
 plt.figure()
-sigma_values = [0.5, 1.0, 1.5]
+sigma_values = [0.5, 1.0, 1.5, 1.7, 1.75]
 for sigma in sigma_values:
     G_values = G_2nd4th(sigma, x)
     plt.plot(x, G_values, label=f'σ = {sigma}')
@@ -147,6 +147,6 @@ plt.xlabel(r"$k_m\Delta x$")
 plt.ylabel(r"$|G|^2$")
 plt.title("2nd Order Space, 4th Order Time Method")
 plt.grid()
-plt.legend()
+plt.legend(loc='upper right')
 plt.tight_layout()
 plt.savefig("stability_2nd4th.pdf", format='pdf')
