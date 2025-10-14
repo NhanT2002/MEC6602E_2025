@@ -4,6 +4,7 @@
 *.gif
 *.txt
 *.pdf
+*.cgns
 
 */bin/
 */build/
