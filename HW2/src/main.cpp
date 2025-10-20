@@ -158,24 +158,22 @@ int main(int argc, char* argv[]) {
     // printVector(geom.x, "");
     // printVector(geom.y, "");
 
-    // output filename from input file (or fallback)
-    std::string out_filename = input_out_filename.empty() ? std::string("out.cgns") : input_out_filename;
-    if (!mesh.writeToCGNS(out_filename)) {
-        std::cerr << "Failed to write CGNS file: " << out_filename << std::endl;
-    } else {
-        std::cout << "Wrote CGNS: " << out_filename << std::endl;
-    }
-
     SpatialDiscretization FVM(mesh, Mach, alpha, k2, k4);
     std::cout << "Initialized SpatialDiscretization with Mach=" << FVM.Mach_
               << ", alpha=" << FVM.alpha_ << ", k2=" << FVM.k2_ << ", k4=" << FVM.k4_ << std::endl;
 
     FVM.initializeVariables();
-    FVM.compute_fluxes();
+    FVM.compute_convective_fluxes();
+    FVM.compute_lambdas();
+    FVM.compute_diffusive_fluxes();
     FVM.compute_residuals();
     FVM.updatePrimitivesVariables();
 
-    mesh.writeToCGNSWithCellData("out_with_data.cgns", FVM);
+    if (!mesh.writeToCGNSWithCellData(input_out_filename, FVM)) {
+        std::cerr << "Failed to write CGNS with cell data." << std::endl;
+    } else {
+        std::cout << "Wrote CGNS with cell data: " << input_out_filename << std::endl;
+    }
 
     return 0;
 }

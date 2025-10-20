@@ -42,7 +42,25 @@ void SpatialDiscretization::initializeVariables() {
 
 }
 
-void SpatialDiscretization::compute_fluxes() {
+std::tuple<double, double, double, double> SpatialDiscretization::compute_conservative_fluxes_IB(int fluidCell, int fluidCell_p1, int fluidCell_p2, 
+                                        double area, double ib_nx, double ib_ny) {
+    double uwall = 0.125*(15*this->uu[fluidCell] - 10*this->uu[fluidCell_p1] + 3*this->uu[fluidCell_p2]); // 2nd order extrapolation
+    double vwall = 0.125*(15*this->vv[fluidCell] - 10*this->vv[fluidCell_p1] + 3*this->vv[fluidCell_p2]); // 2nd order extrapolation
+    double rhowall = 0.125*(15*this->rhorho[fluidCell] - 10*this->rhorho[fluidCell_p1] + 3*this->rhorho[fluidCell_p2]); // 2nd order extrapolation
+    double Ewall = 0.125*(15*this->EE[fluidCell] - 10*this->EE[fluidCell_p1] + 3*this->EE[fluidCell_p2]); // 2nd order extrapolation
+    double pwall = 0.125*(15*this->pp[fluidCell] - 10*this->pp[fluidCell_p1] + 3*this->pp[fluidCell_p2]); // 2nd order extrapolation
+
+    double V = uwall * ib_nx + vwall * ib_ny;
+    double H = Ewall + pwall / rhowall;
+    double F0 = rhowall * V * area;
+    double F1 = (rhowall*uwall*V + pwall*ib_nx) * area;
+    double F2 = (rhowall*vwall*V + pwall*ib_ny) * area;
+    double F3 = (rhowall*H*V) * area;
+
+    return {F0, F1, F2, F3};
+}
+
+void SpatialDiscretization::compute_convective_fluxes() {
     for (auto face : mesh_.fluidFaces) {
         int leftCell = mesh_.faces[face].leftCell;
         int rightCell = mesh_.faces[face].rightCell;
@@ -55,7 +73,7 @@ void SpatialDiscretization::compute_fluxes() {
         double avg_W2 = 0.5 * (W2[leftCell] + W2[rightCell]);
         double avg_W3 = 0.5 * (W3[leftCell] + W3[rightCell]);
 
-        double avg_u = avg_W1 / avg_W0;;
+        double avg_u = avg_W1 / avg_W0;
         double avg_v = avg_W2 / avg_W0;
         double avg_E = avg_W3 / avg_W0;
         double avg_p = pressure(gamma_, avg_W0, avg_u, avg_v, avg_E);
@@ -68,46 +86,80 @@ void SpatialDiscretization::compute_fluxes() {
         F3[face] = (avg_W3 * V + avg_p * V) * area;
     }
 
-    for (auto face : mesh_.immersedBoundaryFaces) {
+    for (auto face : mesh_.ibFacesX_m1) {
         int leftCell = mesh_.faces[face].leftCell;
-        int rightCell = mesh_.faces[face].rightCell; // should be -1 for IB face
+        int rightCell = mesh_.faces[face].rightCell;
         int leftCellType = mesh_.cell_types[leftCell];
         double ib_nx = mesh_.faces[face].ib_nx; // use immersed boundary normal
         double ib_ny = mesh_.faces[face].ib_ny;
-        double nx = (fabs(ib_nx) > fabs(ib_ny)) ? ib_nx : 0.0;
-        double ny = (fabs(ib_ny) > fabs(ib_nx)) ? ib_ny : 0.0;
 
         int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
-        int fluidCell_p1;
-        int fluidCell_p2;
-        if (nx < -1e-12) {
-            fluidCell_p1 = fluidCell + 1;
-            fluidCell_p2 = fluidCell + 2;
-        } else if (nx > 1e-12) {
-            fluidCell_p1 = fluidCell - 1;
-            fluidCell_p2 = fluidCell - 2;
-        } else if (ny < -1e-12) {
-            fluidCell_p1 = fluidCell + (mesh_.ni-1);
-            fluidCell_p2 = fluidCell + 2*(mesh_.ni-1);
-        } else { // ny > 0
-            fluidCell_p1 = fluidCell - (mesh_.ni-1);
-            fluidCell_p2 = fluidCell - 2*(mesh_.ni-1);
-        }
-        // std::cout << "IB Face " << face  << " ib_nx=" << ib_nx << ", ib_ny=" << ib_ny << " nx =" << nx << ", ny=" << ny
-        //           << ": fluidCell=" << fluidCell << ", p1=" << fluidCell_p1 << ", p2=" << fluidCell_p2 << std::endl;
-        double area = mesh_.faces[face].area;
-        double uwall = 0.125*(15*uu[fluidCell] - 10*uu[fluidCell_p1] + 3*uu[fluidCell_p2]); // 2nd order extrapolation
-        double vwall = 0.125*(15*vv[fluidCell] - 10*vv[fluidCell_p1] + 3*vv[fluidCell_p2]); // 2nd order extrapolation
-        double rhowall = 0.125*(15*rhorho[fluidCell] - 10*rhorho[fluidCell_p1] + 3*rhorho[fluidCell_p2]); // 2nd order extrapolation
-        double Ewall = 0.125*(15*EE[fluidCell] - 10*EE[fluidCell_p1] + 3*EE[fluidCell_p2]); // 2nd order extrapolation
-        double pwall = 0.125*(15*pp[fluidCell] - 10*pp[fluidCell_p1] + 3*pp[fluidCell_p2]); // 2nd order extrapolation
+        int fluidCell_p1 = fluidCell + 1;
+        int fluidCell_p2 = fluidCell + 2;
 
-        double V = uwall * ib_nx + vwall * ib_ny;
-        double H = Ewall + pwall / rhowall;
-        F0[face] = rhowall * V * area;
-        F1[face] = (rhowall*uwall*V + pwall*ib_nx) * area;
-        F2[face] = (rhowall*vwall*V + pwall*ib_ny) * area;
-        F3[face] = (rhowall*H*V) * area;
+        auto [F0_face, F1_face, F2_face, F3_face] = compute_conservative_fluxes_IB(fluidCell, fluidCell_p1, fluidCell_p2,
+                                                                                     mesh_.faces[face].area, ib_nx, ib_ny);
+        F0[face] = F0_face;
+        F1[face] = F1_face;
+        F2[face] = F2_face;
+        F3[face] = F3_face;
+    }
+
+    for (auto face : mesh_.ibFacesX_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        double ib_nx = mesh_.faces[face].ib_nx; // use immersed boundary normal
+        double ib_ny = mesh_.faces[face].ib_ny;
+
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+        int fluidCell_p1 = fluidCell - 1;
+        int fluidCell_p2 = fluidCell - 2;
+
+        auto [F0_face, F1_face, F2_face, F3_face] = compute_conservative_fluxes_IB(fluidCell, fluidCell_p1, fluidCell_p2,
+                                                                                     mesh_.faces[face].area, ib_nx, ib_ny);
+        F0[face] = F0_face;
+        F1[face] = F1_face;
+        F2[face] = F2_face;
+        F3[face] = F3_face;
+    }
+
+    for (auto face : mesh_.ibFacesY_m1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        double ib_nx = mesh_.faces[face].ib_nx; // use immersed boundary normal
+        double ib_ny = mesh_.faces[face].ib_ny;
+
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+        int fluidCell_p1 = fluidCell + (mesh_.ni-1);
+        int fluidCell_p2 = fluidCell + 2*(mesh_.ni-1);
+
+        auto [F0_face, F1_face, F2_face, F3_face] = compute_conservative_fluxes_IB(fluidCell, fluidCell_p1, fluidCell_p2,
+                                                                                     mesh_.faces[face].area, ib_nx, ib_ny);
+        F0[face] = F0_face;
+        F1[face] = F1_face;
+        F2[face] = F2_face;
+        F3[face] = F3_face;
+    }
+
+    for (auto face : mesh_.ibFacesY_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        double ib_nx = mesh_.faces[face].ib_nx; // use immersed boundary normal
+        double ib_ny = mesh_.faces[face].ib_ny;
+
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+        int fluidCell_p1 = fluidCell - (mesh_.ni-1);
+        int fluidCell_p2 = fluidCell - 2*(mesh_.ni-1);
+
+        auto [F0_face, F1_face, F2_face, F3_face] = compute_conservative_fluxes_IB(fluidCell, fluidCell_p1, fluidCell_p2,
+                                                                                     mesh_.faces[face].area, ib_nx, ib_ny);
+        F0[face] = F0_face;
+        F1[face] = F1_face;
+        F2[face] = F2_face;
+        F3[face] = F3_face;
     }
 
     for (auto face : mesh_.farfieldFaces) {
@@ -187,51 +239,6 @@ void SpatialDiscretization::compute_fluxes() {
 
 }
 
-void SpatialDiscretization::compute_residuals() {
-    for (auto face : mesh_.fluidFaces) {
-        int leftCell = mesh_.faces[face].leftCell;
-        int rightCell = mesh_.faces[face].rightCell;
-
-        // Update residuals for left cell
-        Rc0[leftCell] += F0[face];
-        Rc1[leftCell] += F1[face];
-        Rc2[leftCell] += F2[face];
-        Rc3[leftCell] += F3[face];
-
-        // Update residuals for right cell
-        Rc0[rightCell] -= F0[face];
-        Rc1[rightCell] -= F1[face];
-        Rc2[rightCell] -= F2[face];
-        Rc3[rightCell] -= F3[face];
-    }
-
-    for (auto face : mesh_.immersedBoundaryFaces) {
-        int leftCell = mesh_.faces[face].leftCell;
-        int rightCell = mesh_.faces[face].rightCell;
-        int leftCellType = mesh_.cell_types[leftCell];
-        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
-
-        // Update residuals for fluid cell only
-        Rc0[fluidCell] += F0[face];
-        Rc1[fluidCell] += F1[face];
-        Rc2[fluidCell] += F2[face];
-        Rc3[fluidCell] += F3[face];
-    }
-
-    for (auto face : mesh_.farfieldFaces) {
-        int leftCell = mesh_.faces[face].leftCell;
-        int rightCell = mesh_.faces[face].rightCell;
-        int leftCellType = mesh_.cell_types[leftCell];
-        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
-
-        // Update residuals for fluid cell only
-        Rc0[fluidCell] += F0[face];
-        Rc1[fluidCell] += F1[face];
-        Rc2[fluidCell] += F2[face];
-        Rc3[fluidCell] += F3[face];
-    }
-}
-
 void SpatialDiscretization::compute_lambdas() {
     for (auto cell : mesh_.fluidCells) {
         double u = uu[cell];
@@ -242,6 +249,344 @@ void SpatialDiscretization::compute_lambdas() {
 
         LambdaI[cell] = (fabs(u) + a)*mesh_.avg_face_area_x[cell];
         LambdaJ[cell] = (fabs(v) + a)*mesh_.avg_face_area_y[cell];
+    }
+}
+
+void SpatialDiscretization::compute_diffusive_fluxes() {
+    for (auto face : mesh_.fluidFacesX) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - 1;
+        int rightCell = mesh_.faces[face].rightCell;
+        int rightCell_p1 = rightCell + 1;
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = 0.5*(LambdaI[leftCell] + LambdaI[rightCell]) + 0.5*(LambdaJ[leftCell] + LambdaJ[rightCell]);
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0[leftCell]) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1[leftCell]) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2[leftCell]) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3[leftCell]) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+    for (auto face : mesh_.fluidFacesX_m1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int rightCell_p1 = rightCell + 1;
+        auto [eps2, eps4] = epsilon(pp[leftCell] - (pp[rightCell]-pp[leftCell]), pp[leftCell], pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = 0.5*(LambdaI[leftCell] + LambdaI[rightCell]) + 0.5*(LambdaJ[leftCell] + LambdaJ[rightCell]);
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0[leftCell]) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0[leftCell]-(W0[leftCell] - (W0[rightCell]-W0[leftCell]))));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1[leftCell]) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1[leftCell]-(W1[leftCell] - (W1[rightCell]-W1[leftCell]))));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2[leftCell]) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2[leftCell]-(W2[leftCell] - (W2[rightCell]-W2[leftCell]))));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3[leftCell]) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3[leftCell]-(W3[leftCell] - (W3[rightCell]-W3[leftCell]))));
+    }
+
+    for (auto face : mesh_.fluidFacesX_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - 1;
+        int rightCell = mesh_.faces[face].rightCell;
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], pp[rightCell], pp[rightCell] + (pp[rightCell]-pp[leftCell]));
+        double lambdaS = 0.5*(LambdaI[leftCell] + LambdaI[rightCell]) + 0.5*(LambdaJ[leftCell] + LambdaJ[rightCell]);
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0[leftCell]) - eps4*((W0[rightCell] + (W0[rightCell]-W0[leftCell]))-3.0*W0[rightCell]+3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1[leftCell]) - eps4*((W1[rightCell] + (W1[rightCell]-W1[leftCell]))-3.0*W1[rightCell]+3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2[leftCell]) - eps4*((W2[rightCell] + (W2[rightCell]-W2[leftCell]))-3.0*W2[rightCell]+3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3[leftCell]) - eps4*((W3[rightCell] + (W3[rightCell]-W3[leftCell]))-3.0*W3[rightCell]+3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+    for (auto face : mesh_.fluidFacesY) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - (mesh_.ni-1);
+        int rightCell = mesh_.faces[face].rightCell;
+        int rightCell_p1 = rightCell + (mesh_.ni-1);
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = 0.5*(LambdaI[leftCell] + LambdaI[rightCell]) + 0.5*(LambdaJ[leftCell] + LambdaJ[rightCell]);
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0[leftCell]) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1[leftCell]) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2[leftCell]) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3[leftCell]) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+    for (auto face : mesh_.fluidFacesY_m1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int rightCell_p1 = rightCell + (mesh_.ni-1);
+        auto [eps2, eps4] = epsilon(pp[leftCell] - (pp[rightCell]-pp[leftCell]), pp[leftCell], pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = 0.5*(LambdaI[leftCell] + LambdaI[rightCell]) + 0.5*(LambdaJ[leftCell] + LambdaJ[rightCell]);
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0[leftCell]) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0[leftCell]-(W0[leftCell] - (W0[rightCell]-W0[leftCell]))));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1[leftCell]) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1[leftCell]-(W1[leftCell] - (W1[rightCell]-W1[leftCell]))));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2[leftCell]) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2[leftCell]-(W2[leftCell] - (W2[rightCell]-W2[leftCell]))));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3[leftCell]) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3[leftCell]-(W3[leftCell] - (W3[rightCell]-W3[leftCell]))));
+    }
+
+    for (auto face : mesh_.fluidFacesY_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - (mesh_.ni-1);
+        int rightCell = mesh_.faces[face].rightCell;
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], pp[rightCell], pp[rightCell] + (pp[rightCell]-pp[leftCell]));
+        double lambdaS = 0.5*(LambdaI[leftCell] + LambdaI[rightCell]) + 0.5*(LambdaJ[leftCell] + LambdaJ[rightCell]);
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0[leftCell]) - eps4*((W0[rightCell] + (W0[rightCell]-W0[leftCell]))-3.0*W0[rightCell]+3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1[leftCell]) - eps4*((W1[rightCell] + (W1[rightCell]-W1[leftCell]))-3.0*W1[rightCell]+3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2[leftCell]) - eps4*((W2[rightCell] + (W2[rightCell]-W2[leftCell]))-3.0*W2[rightCell]+3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3[leftCell]) - eps4*((W3[rightCell] + (W3[rightCell]-W3[leftCell]))-3.0*W3[rightCell]+3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+    for (auto face : mesh_.farfieldFacesX_m1) {
+        int rightCell = mesh_.faces[face].leftCell;
+        int rightCell_p1 = rightCell + 1;
+        double delta_p = pp[rightCell_p1] - pp[rightCell];
+        double p_left = pp[rightCell] - delta_p;
+        double p_left_m1 = p_left - delta_p;
+        auto [eps2, eps4] = epsilon(p_left_m1, p_left, pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = LambdaI[rightCell] + LambdaJ[rightCell];
+        double delta_W0 = W0[rightCell_p1] - W0[rightCell];
+        double delta_W1 = W1[rightCell_p1] - W1[rightCell];
+        double delta_W2 = W2[rightCell_p1] - W2[rightCell];
+        double delta_W3 = W3[rightCell_p1] - W3[rightCell];
+        double W0_left = W0[rightCell] - delta_W0;
+        double W1_left = W1[rightCell] - delta_W1;
+        double W2_left = W2[rightCell] - delta_W2;
+        double W3_left = W3[rightCell] - delta_W3;
+        double W0_left_m1 = W0_left - delta_W0;
+        double W1_left_m1 = W1_left - delta_W1;
+        double W2_left_m1 = W2_left - delta_W2;
+        double W3_left_m1 = W3_left - delta_W3;
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0_left) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0_left-W0_left_m1));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1_left) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1_left-W1_left_m1));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2_left) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2_left-W2_left_m1));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3_left) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3_left-W3_left_m1));
+    }
+
+    for (auto face : mesh_.farfieldFacesX_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - 1;
+        double delta_p = pp[leftCell] - pp[leftCell_m1];
+        double p_right = pp[leftCell] + delta_p;
+        double p_right_p1 = p_right + delta_p;
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], p_right, p_right_p1);
+        double lambdaS = LambdaI[leftCell] + LambdaJ[leftCell];
+        double delta_W0 = W0[leftCell] - W0[leftCell_m1];
+        double delta_W1 = W1[leftCell] - W1[leftCell_m1];
+        double delta_W2 = W2[leftCell] - W2[leftCell_m1];
+        double delta_W3 = W3[leftCell] - W3[leftCell_m1];
+        double W0_right = W0[leftCell] + delta_W0;
+        double W1_right = W1[leftCell] + delta_W1;
+        double W2_right = W2[leftCell] + delta_W2;
+        double W3_right = W3[leftCell] + delta_W3;
+        double W0_right_p1 = W0_right + delta_W0;
+        double W1_right_p1 = W1_right + delta_W1;
+        double W2_right_p1 = W2_right + delta_W2;
+        double W3_right_p1 = W3_right + delta_W3;
+        D0[face] = lambdaS*(eps2*(W0_right - W0[leftCell]) - eps4*(W0_right_p1 - 3.0*W0_right + 3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1_right - W1[leftCell]) - eps4*(W1_right_p1 - 3.0*W1_right + 3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2_right - W2[leftCell]) - eps4*(W2_right_p1 - 3.0*W2_right + 3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3_right - W3[leftCell]) - eps4*(W3_right_p1 - 3.0*W3_right + 3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+    for (auto face : mesh_.farfieldFacesY_m1) {
+        int rightCell = mesh_.faces[face].leftCell;
+        int rightCell_p1 = rightCell + (mesh_.ni-1);
+        double delta_p = pp[rightCell_p1] - pp[rightCell];
+        double p_left = pp[rightCell] - delta_p;
+        double p_left_m1 = p_left - delta_p;
+        auto [eps2, eps4] = epsilon(p_left_m1, p_left, pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = LambdaI[rightCell] + LambdaJ[rightCell];
+        double delta_W0 = W0[rightCell_p1] - W0[rightCell];
+        double delta_W1 = W1[rightCell_p1] - W1[rightCell];
+        double delta_W2 = W2[rightCell_p1] - W2[rightCell];
+        double delta_W3 = W3[rightCell_p1] - W3[rightCell];
+        double W0_left = W0[rightCell] - delta_W0;
+        double W1_left = W1[rightCell] - delta_W1;
+        double W2_left = W2[rightCell] - delta_W2;
+        double W3_left = W3[rightCell] - delta_W3;
+        double W0_left_m1 = W0_left - delta_W0;
+        double W1_left_m1 = W1_left - delta_W1;
+        double W2_left_m1 = W2_left - delta_W2;
+        double W3_left_m1 = W3_left - delta_W3;
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0_left) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0_left-W0_left_m1));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1_left) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1_left-W1_left_m1));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2_left) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2_left-W2_left_m1));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3_left) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3_left-W3_left_m1));
+    }
+
+    for (auto face : mesh_.farfieldFacesY_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - (mesh_.ni-1);
+        double delta_p = pp[leftCell] - pp[leftCell_m1];
+        double p_right = pp[leftCell] + delta_p;
+        double p_right_p1 = p_right + delta_p;
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], p_right, p_right_p1);
+        double lambdaS = LambdaI[leftCell] + LambdaJ[leftCell];
+        double delta_W0 = W0[leftCell] - W0[leftCell_m1];
+        double delta_W1 = W1[leftCell] - W1[leftCell_m1];
+        double delta_W2 = W2[leftCell] - W2[leftCell_m1];
+        double delta_W3 = W3[leftCell] - W3[leftCell_m1];
+        double W0_right = W0[leftCell] + delta_W0;
+        double W1_right = W1[leftCell] + delta_W1;
+        double W2_right = W2[leftCell] + delta_W2;
+        double W3_right = W3[leftCell] + delta_W3;
+        double W0_right_p1 = W0_right + delta_W0;
+        double W1_right_p1 = W1_right + delta_W1;
+        double W2_right_p1 = W2_right + delta_W2;
+        double W3_right_p1 = W3_right + delta_W3;
+        D0[face] = lambdaS*(eps2*(W0_right - W0[leftCell]) - eps4*(W0_right_p1 - 3.0*W0_right + 3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1_right - W1[leftCell]) - eps4*(W1_right_p1 - 3.0*W1_right + 3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2_right - W2[leftCell]) - eps4*(W2_right_p1 - 3.0*W2_right + 3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3_right - W3[leftCell]) - eps4*(W3_right_p1 - 3.0*W3_right + 3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+    for (auto face : mesh_.ibFacesX_m1) {
+        int rightCell = mesh_.faces[face].rightCell;
+        int rightCell_p1 = rightCell + 1;
+        double delta_p = pp[rightCell_p1] - pp[rightCell];
+        double p_left = pp[rightCell] - delta_p;
+        double p_left_m1 = p_left - delta_p;
+        auto [eps2, eps4] = epsilon(p_left_m1, p_left, pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = LambdaI[rightCell] + LambdaJ[rightCell];
+        double delta_W0 = W0[rightCell_p1] - W0[rightCell];
+        double delta_W1 = W1[rightCell_p1] - W1[rightCell];
+        double delta_W2 = W2[rightCell_p1] - W2[rightCell];
+        double delta_W3 = W3[rightCell_p1] - W3[rightCell];
+        double W0_left = W0[rightCell] - delta_W0;
+        double W1_left = W1[rightCell] - delta_W1;
+        double W2_left = W2[rightCell] - delta_W2;
+        double W3_left = W3[rightCell] - delta_W3;
+        double W0_left_m1 = W0_left - delta_W0;
+        double W1_left_m1 = W1_left - delta_W1;
+        double W2_left_m1 = W2_left - delta_W2;
+        double W3_left_m1 = W3_left - delta_W3;
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0_left) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0_left-W0_left_m1));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1_left) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1_left-W1_left_m1));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2_left) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2_left-W2_left_m1));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3_left) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3_left-W3_left_m1));
+    }
+
+    for (auto face : mesh_.ibFacesX_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - 1;
+        double delta_p = pp[leftCell] - pp[leftCell_m1];
+        double p_right = pp[leftCell] + delta_p;
+        double p_right_p1 = p_right + delta_p;
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], p_right, p_right_p1);
+        double lambdaS = LambdaI[leftCell] + LambdaJ[leftCell];
+        double delta_W0 = W0[leftCell] - W0[leftCell_m1];
+        double delta_W1 = W1[leftCell] - W1[leftCell_m1];
+        double delta_W2 = W2[leftCell] - W2[leftCell_m1];
+        double delta_W3 = W3[leftCell] - W3[leftCell_m1];
+        double W0_right = W0[leftCell] + delta_W0;
+        double W1_right = W1[leftCell] + delta_W1;
+        double W2_right = W2[leftCell] + delta_W2;
+        double W3_right = W3[leftCell] + delta_W3;
+        double W0_right_p1 = W0_right + delta_W0;
+        double W1_right_p1 = W1_right + delta_W1;
+        double W2_right_p1 = W2_right + delta_W2;
+        double W3_right_p1 = W3_right + delta_W3;
+        D0[face] = lambdaS*(eps2*(W0_right - W0[leftCell]) - eps4*(W0_right_p1 - 3.0*W0_right + 3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1_right - W1[leftCell]) - eps4*(W1_right_p1 - 3.0*W1_right + 3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2_right - W2[leftCell]) - eps4*(W2_right_p1 - 3.0*W2_right + 3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3_right - W3[leftCell]) - eps4*(W3_right_p1 - 3.0*W3_right + 3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+    for (auto face : mesh_.ibFacesY_m1) {
+        int rightCell = mesh_.faces[face].rightCell;
+        int rightCell_p1 = rightCell + (mesh_.ni-1);
+        double delta_p = pp[rightCell_p1] - pp[rightCell];
+        double p_left = pp[rightCell] - delta_p;
+        double p_left_m1 = p_left - delta_p;
+        auto [eps2, eps4] = epsilon(p_left_m1, p_left, pp[rightCell], pp[rightCell_p1]);
+        double lambdaS = LambdaI[rightCell] + LambdaJ[rightCell];
+        double delta_W0 = W0[rightCell_p1] - W0[rightCell];
+        double delta_W1 = W1[rightCell_p1] - W1[rightCell];
+        double delta_W2 = W2[rightCell_p1] - W2[rightCell];
+        double delta_W3 = W3[rightCell_p1] - W3[rightCell];
+        double W0_left = W0[rightCell] - delta_W0;
+        double W1_left = W1[rightCell] - delta_W1;
+        double W2_left = W2[rightCell] - delta_W2;
+        double W3_left = W3[rightCell] - delta_W3;
+        double W0_left_m1 = W0_left - delta_W0;
+        double W1_left_m1 = W1_left - delta_W1;
+        double W2_left_m1 = W2_left - delta_W2;
+        double W3_left_m1 = W3_left - delta_W3;
+        D0[face] = lambdaS*(eps2*(W0[rightCell]-W0_left) - eps4*(W0[rightCell_p1]-3.0*W0[rightCell]+3.0*W0_left-W0_left_m1));
+        D1[face] = lambdaS*(eps2*(W1[rightCell]-W1_left) - eps4*(W1[rightCell_p1]-3.0*W1[rightCell]+3.0*W1_left-W1_left_m1));
+        D2[face] = lambdaS*(eps2*(W2[rightCell]-W2_left) - eps4*(W2[rightCell_p1]-3.0*W2[rightCell]+3.0*W2_left-W2_left_m1));
+        D3[face] = lambdaS*(eps2*(W3[rightCell]-W3_left) - eps4*(W3[rightCell_p1]-3.0*W3[rightCell]+3.0*W3_left-W3_left_m1));
+    }
+
+    for (auto face : mesh_.ibFacesY_p1) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int leftCell_m1 = leftCell - (mesh_.ni-1);
+        double delta_p = pp[leftCell] - pp[leftCell_m1];
+        double p_right = pp[leftCell] + delta_p;
+        double p_right_p1 = p_right + delta_p;
+        auto [eps2, eps4] = epsilon(pp[leftCell_m1], pp[leftCell], p_right, p_right_p1);
+        double lambdaS = LambdaI[leftCell] + LambdaJ[leftCell];
+        double delta_W0 = W0[leftCell] - W0[leftCell_m1];
+        double delta_W1 = W1[leftCell] - W1[leftCell_m1];
+        double delta_W2 = W2[leftCell] - W2[leftCell_m1];
+        double delta_W3 = W3[leftCell] - W3[leftCell_m1];
+        double W0_right = W0[leftCell] + delta_W0;
+        double W1_right = W1[leftCell] + delta_W1;
+        double W2_right = W2[leftCell] + delta_W2;
+        double W3_right = W3[leftCell] + delta_W3;
+        double W0_right_p1 = W0_right + delta_W0;
+        double W1_right_p1 = W1_right + delta_W1;
+        double W2_right_p1 = W2_right + delta_W2;
+        double W3_right_p1 = W3_right + delta_W3;
+        D0[face] = lambdaS*(eps2*(W0_right - W0[leftCell]) - eps4*(W0_right_p1 - 3.0*W0_right + 3.0*W0[leftCell]-W0[leftCell_m1]));
+        D1[face] = lambdaS*(eps2*(W1_right - W1[leftCell]) - eps4*(W1_right_p1 - 3.0*W1_right + 3.0*W1[leftCell]-W1[leftCell_m1]));
+        D2[face] = lambdaS*(eps2*(W2_right - W2[leftCell]) - eps4*(W2_right_p1 - 3.0*W2_right + 3.0*W2[leftCell]-W2[leftCell_m1]));
+        D3[face] = lambdaS*(eps2*(W3_right - W3[leftCell]) - eps4*(W3_right_p1 - 3.0*W3_right + 3.0*W3[leftCell]-W3[leftCell_m1]));
+    }
+
+}
+
+std::tuple<double, double> SpatialDiscretization::epsilon(double p_Im1, double p_I, double p_Ip1, double p_Ip2) {
+    double gamma_I = fabs(p_Ip1 - 2.0*p_I + p_Im1) / (p_Ip1 + 2.0*p_I + p_Im1);
+    double gamma_Ip1 = fabs(p_Ip2 - 2.0*p_Ip1 + p_I) / (p_Ip2 + 2.0*p_Ip1 + p_I);
+    double eps2 = k2_ * std::max(gamma_I, gamma_Ip1);
+    double eps4 = std::max(0.0, k4_ - eps2);
+    return {eps2, eps4};
+}
+
+void SpatialDiscretization::compute_residuals() {
+    for (auto face : mesh_.fluidFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+
+        // Update residuals for left cell
+        Rc0[leftCell] += F0[face] - D0[face];
+        Rc1[leftCell] += F1[face] - D1[face];
+        Rc2[leftCell] += F2[face] - D2[face];
+        Rc3[leftCell] += F3[face] - D3[face];
+
+        // Update residuals for right cell
+        Rc0[rightCell] -= F0[face] - D0[face];
+        Rc1[rightCell] -= F1[face] - D1[face];
+        Rc2[rightCell] -= F2[face] - D2[face];
+        Rc3[rightCell] -= F3[face] - D3[face];
+    }
+
+    for (auto face : mesh_.immersedBoundaryFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+
+        // Update residuals for fluid cell only
+        Rc0[fluidCell] += F0[face] - D0[face];
+        Rc1[fluidCell] += F1[face] - D1[face];
+        Rc2[fluidCell] += F2[face] - D2[face];
+        Rc3[fluidCell] += F3[face] - D3[face];
+    }
+
+    for (auto face : mesh_.farfieldFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+
+        // Update residuals for fluid cell only
+        Rc0[fluidCell] += F0[face] - D0[face];
+        Rc1[fluidCell] += F1[face] - D1[face];
+        Rc2[fluidCell] += F2[face] - D2[face];
+        Rc3[fluidCell] += F3[face] - D3[face];
     }
 }
 

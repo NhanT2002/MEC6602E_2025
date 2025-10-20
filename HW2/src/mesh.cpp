@@ -197,7 +197,7 @@ void Mesh::computeStructuredMetrics() {
 		auto &cn = cell_nodes[c];
 		double area = 0.0;
 		for (int k=0; k<4; ++k) {
-			int n1 = cn[k];;
+			int n1 = cn[k];
 			int n2 = cn[(k+1)%4];
 			area += x[n1]*y[n2] - x[n2]*y[n1];
 		}
@@ -349,7 +349,7 @@ void Mesh::levelSet(std::vector<double> geom_x, std::vector<double> geom_y) {
 	for (size_t fid = 0; fid < faces.size(); ++fid) {
 		auto &F = faces[fid];
 		if (F.leftCell < 0 || F.rightCell < 0) continue;
-		int leftType = cell_types[F.leftCell];;
+		int leftType = cell_types[F.leftCell];
 		int rightType = cell_types[F.rightCell];
 		if ( (leftType == 1 && rightType == 0) || (leftType == 0 && rightType == 1) ) {
 			// face between fluid and solid cell: mark as immersed boundary
@@ -375,6 +375,113 @@ void Mesh::assignFaceAndCellTypes() {
 			int rightType = cell_types[F.rightCell];
 			if (leftType == 1 && rightType == 1) {
 				fluidFaces.push_back((int)fid);
+			}
+		}
+	}
+
+	for (auto face : farfieldFaces) {
+		int leftCell = faces[face].leftCell;
+		if (leftCell == 0) {
+			double nx = faces[face].nx;
+			double ny = faces[face].ny;
+			if (std::abs(nx) > std::abs(ny)) {
+				farfieldFacesX_m1.push_back(face);
+			}
+			else {
+				farfieldFacesY_m1.push_back(face);
+			}
+		}
+		else if (leftCell == ni - 2) {
+			double nx = faces[face].nx;
+			double ny = faces[face].ny;
+			if (std::abs(nx) > std::abs(ny)) {
+				farfieldFacesX_p1.push_back(face);
+			}
+			else {
+				farfieldFacesY_m1.push_back(face);
+			}
+		}
+		else if (leftCell == ncells - (ni - 1)) {
+			double nx = faces[face].nx;
+			double ny = faces[face].ny;
+			if (std::abs(nx) > std::abs(ny)) {
+				farfieldFacesX_m1.push_back(face);
+			}
+			else {
+				farfieldFacesY_p1.push_back(face);
+			}
+		}
+		else if (leftCell == ncells - 1) {
+			double nx = faces[face].nx;
+			double ny = faces[face].ny;
+			if (std::abs(nx) > std::abs(ny)) {
+				farfieldFacesX_p1.push_back(face);
+			}
+			else {
+				farfieldFacesY_p1.push_back(face);
+			}
+		}
+		else if (leftCell > 0 && leftCell < ni - 2) {
+			farfieldFacesY_m1.push_back(face);
+		}
+		else if (leftCell > ncells - (ni - 1) && leftCell < ncells - 1) {
+			farfieldFacesY_p1.push_back(face);
+		}
+		else if (leftCell % (ni - 1) == 0) {
+			farfieldFacesX_m1.push_back(face);
+		}
+		else if ((leftCell+1) % (ni - 1) == 0) {
+			farfieldFacesX_p1.push_back(face);
+		}
+	}
+
+	for (auto face : fluidFaces) {
+		int leftCell = faces[face].leftCell;
+		int rightCell = faces[face].rightCell;
+		int deltaCell = rightCell - leftCell;
+		if (std::abs(deltaCell) == 1) {
+			if (leftCell % (ni - 1) == 0) {
+				fluidFacesX_m1.push_back(face);
+			}
+			else if ((rightCell+1) % (ni - 1) == 0) {
+				fluidFacesX_p1.push_back(face);
+			}
+			else {
+				fluidFacesX.push_back(face);
+			}
+		}
+		else {
+			if (leftCell < ni - 1) {
+				fluidFacesY_m1.push_back(face);
+			}
+			else if (rightCell >= ncells - (ni - 1)) {
+				fluidFacesY_p1.push_back(face);
+			}
+			else {
+				fluidFacesY.push_back(face);
+			}
+		}
+	}
+
+	for (auto face : immersedBoundaryFaces) {
+		int leftCell = faces[face].leftCell;
+		int rightCell = faces[face].rightCell;
+		int leftCellType = cell_types[leftCell];
+		int deltaCell = rightCell - leftCell;
+		if (std::abs(deltaCell) == 1) {
+			if (leftCellType == 1) {
+				ibFacesX_p1.push_back(face);
+			}
+			else {
+				ibFacesX_m1.push_back(face);
+			}
+		}
+		else {
+			if (leftCellType == 1) {
+				ibFacesY_p1.push_back(face);
+			}
+			else {
+				ibFacesY_m1.push_back(face);
 			}
 		}
 	}

@@ -50,8 +50,31 @@ public:
 	std::vector<std::vector<int>> cell_faces; // face indices per cell (4 faces)
 
 	std::vector<int> farfieldFaces; // indices of farfield boundary faces
+	std::vector<int> farfieldFacesX_m1; // indices of farfield faces in x-direction
+	std::vector<int> farfieldFacesX_p1; // indices of farfield faces in x-direction
+	std::vector<int> farfieldFacesY_m1; // indices of farfield faces in y-direction
+	std::vector<int> farfieldFacesY_p1; // indices of farfield faces in y-direction
+	std::vector<int> farfieldFacesZ_m1; // indices of farfield faces in z-direction
+	std::vector<int> farfieldFacesZ_p1; // indices of farfield faces in z-direction
+
 	std::vector<int> immersedBoundaryFaces; // indices of immersed boundary faces
+	std::vector<int> ibFacesX_m1; // indices of immersed boundary faces in x-direction
+	std::vector<int> ibFacesX_p1; // indices of immersed boundary faces in x-direction
+	std::vector<int> ibFacesY_m1; // indices of immersed boundary faces in y-direction
+	std::vector<int> ibFacesY_p1; // indices of immersed boundary faces in y-direction
+	std::vector<int> ibFacesZ_m1; // indices of immersed boundary faces in z-direction
+	std::vector<int> ibFacesZ_p1; // indices of immersed boundary faces in z-direction
+
 	std::vector<int> fluidFaces; // indices of fluid domain faces without boundaries
+	std::vector<int> fluidFacesX; // indices of fluid faces in x-direction
+	std::vector<int> fluidFacesX_m1; // special case for calculating dissipation
+	std::vector<int> fluidFacesX_p1; // special case for calculating dissipation
+	std::vector<int> fluidFacesY; // indices of fluid faces in y-direction
+	std::vector<int> fluidFacesY_m1; // special case for calculating dissipation
+	std::vector<int> fluidFacesY_p1; // special case for calculating dissipation
+	std::vector<int> fluidFacesZ; // indices of fluid faces in z-direction
+	std::vector<int> fluidFacesZ_m1; // special case for calculating dissipation
+	std::vector<int> fluidFacesZ_p1; // special case for calculating dissipation
 
 	std::vector<int> fluidCells; // indices of fluid cells
 
