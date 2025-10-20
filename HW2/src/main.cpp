@@ -13,33 +13,67 @@
 #include <Eigen/Sparse>
 #include "mesh.h"
 #include "helper.h"
+#include "SpatialDiscretization.h"
 
-std::tuple<std::string, std::string, std::string> readInputFile(const std::string& filename) {
+std::tuple<std::string, std::string, std::string, double, double, double, double> readInputFile(const std::string& filename) {
     std::ifstream input_file(filename);
     if (!input_file) {
         std::cerr << "Error opening input file: " << filename << std::endl;
         return {};
     }
 
+    auto trim = [](std::string s) {
+        // trim left
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+        // trim right
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
+        return s;
+    };
+
+    std::string mesh_filename;
+    std::string geometry_filename;
+    std::string output_filename;
+    // initialize numeric values to safe defaults to avoid maybe-uninitialized warnings
+    double Mach = 0.0;
+    double alpha = 0.0;
+    double k2 = 0.0;
+    double k4 = 0.0;
+
     std::string line;
-    std::vector<std::string> values;
     while (std::getline(input_file, line)) {
-        std::istringstream iss(line);
-        std::string key;
-        char equalSign;
-        if (iss >> key >> equalSign && equalSign == '=') {
-            std::string value;
-            if (iss >> value) {
-                // std::cout << "Key: " << key << ", Value: " << value << std::endl;
-                values.push_back(value);
-            }
+        // remove anything after a comment character (#) and trim
+        auto comment_pos = line.find('#');
+        if (comment_pos != std::string::npos) line = line.substr(0, comment_pos);
+        line = trim(line);
+        if (line.empty()) continue;
+
+        auto eq_pos = line.find('=');
+        if (eq_pos == std::string::npos) continue; // skip lines without '='
+
+        std::string key = trim(line.substr(0, eq_pos));
+        std::string value = trim(line.substr(eq_pos + 1));
+
+        // map keys (case-sensitive as used in example)
+        if (key == "mesh_filename") {
+            mesh_filename = value;
+        } else if (key == "geometry_filename") {
+            geometry_filename = value;
+        } else if (key == "output_filename") {
+            output_filename = value;
+        } else if (key == "Mach") {
+            Mach = std::stod(value);
+        } else if (key == "alpha") {
+            alpha = std::stod(value);
+        } else if (key == "k2") {
+            k2 = std::stod(value);
+        } else if (key == "k4") {
+            k4 = std::stod(value);
         }
     }
-    std::string mesh_filename = (values.size() > 0 ? values[0] : std::string());
-    std::string geometry_filename = (values.size() > 1 ? values[1] : std::string());
-    std::string output_filename = (values.size() > 2 ? values[2] : std::string("out.cgns"));
 
-    return {mesh_filename, geometry_filename, output_filename};
+    if (output_filename.empty()) output_filename = "out.cgns";
+
+    return {mesh_filename, geometry_filename, output_filename, Mach, alpha, k2, k4};
 }
 
 int main(int argc, char* argv[]) {
@@ -53,11 +87,15 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Input file: " << input_filename << std::endl;
 
-    auto [mesh_filename, geometry_filename, input_out_filename] = readInputFile(input_filename);
+    auto [mesh_filename, geometry_filename, input_out_filename, Mach, alpha, k2, k4] = readInputFile(input_filename);
 
     std::cout << "Mesh filename: " << mesh_filename << std::endl;
     std::cout << "Geometry filename: " << geometry_filename << std::endl;
     std::cout << "Output filename (from input): " << input_out_filename << std::endl;
+    std::cout << "Mach number: " << Mach << std::endl;
+    std::cout << "Alpha: " << alpha << std::endl;
+    std::cout << "k2: " << k2 << std::endl;
+    std::cout << "k4: " << k4 << std::endl;
 
     // Read mesh coordinates
     Mesh mesh;
@@ -108,11 +146,8 @@ int main(int argc, char* argv[]) {
     }
 
     // identify faces by type and compute immersed-boundary normals
-    mesh.assignFaceTypes();
+    mesh.assignFaceAndCellTypes();
     mesh.computeImmersedBoundaryNormals(geom.x, geom.y);
-
-    // Assign face types based on cell types
-    mesh.assignFaceTypes();
 
     // for (auto fid : mesh.immersedBoundaryFaces) {
     //     const auto& F = mesh.faces[fid];
@@ -131,6 +166,16 @@ int main(int argc, char* argv[]) {
         std::cout << "Wrote CGNS: " << out_filename << std::endl;
     }
 
+    SpatialDiscretization FVM(mesh, Mach, alpha, k2, k4);
+    std::cout << "Initialized SpatialDiscretization with Mach=" << FVM.Mach_
+              << ", alpha=" << FVM.alpha_ << ", k2=" << FVM.k2_ << ", k4=" << FVM.k4_ << std::endl;
+
+    FVM.initializeVariables();
+    FVM.compute_fluxes();
+    FVM.compute_residuals();
+    FVM.updatePrimitivesVariables();
+
+    mesh.writeToCGNSWithCellData("out_with_data.cgns", FVM);
 
     return 0;
 }

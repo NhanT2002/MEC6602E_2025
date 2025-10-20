@@ -28,3 +28,13 @@ double l2Norm(const std::vector<double>& u_np1, const std::vector<double>& u_n) 
     }
     return std::sqrt(sum);
 }
+
+double pressure(double gamma, double rho, double u, double v, double E) {
+    return (gamma - 1.0) * rho * (E - 0.5 * (u * u + v * v));
+}
+
+double mach(double gamma, double rho, double p, double u, double v) {
+    double c = std::sqrt(gamma * p / rho);
+    double M = std::sqrt(u * u + v * v) / c;
+    return M;
+}

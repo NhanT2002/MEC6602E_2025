@@ -10,4 +10,8 @@ void printVector(const std::vector<int>& vec, const std::string& name);
 
 double l2Norm(const std::vector<double>& u_np1, const std::vector<double>& u_n);
 
+double pressure(double gamma, double rho, double u, double v, double E);
+
+double mach(double gamma, double rho, double p, double u, double v);
+
 #endif // HELPER_H

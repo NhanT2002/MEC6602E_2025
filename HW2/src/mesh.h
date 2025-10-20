@@ -5,6 +5,9 @@
 #include <tuple>
 #include <vector>
 #include <array>
+#include <limits>
+// Forward declaration to avoid circular include: mesh.h <-> SpatialDiscretization.h
+class SpatialDiscretization;
 
 // Simple Mesh class for structured grids (node-centered coordinates)
 // and cell-centered finite-volume metric computations.
@@ -25,6 +28,9 @@ public:
 	std::vector<double> cx, cy, cz; // cell centers
 	std::vector<double> volume; // cell volumes (areas in 2D)
 	std::vector<int> cell_types; // cell types (1=fluid, -1=solid, 0=ghost)
+	std::vector<double> avg_face_area_x; // average face area in x-direction per cell
+	std::vector<double> avg_face_area_y; // average face area in y-direction per cell
+	std::vector<double> avg_face_area_z; // average face area in z-direction per cell
 	std::vector<double> phi; // signed distance function at cell centers
 
 	struct Face {
@@ -47,6 +53,8 @@ public:
 	std::vector<int> immersedBoundaryFaces; // indices of immersed boundary faces
 	std::vector<int> fluidFaces; // indices of fluid domain faces without boundaries
 
+	std::vector<int> fluidCells; // indices of fluid cells
+
 	Mesh() = default;
 
 	// Load a structured mesh from a CGNS file (reads node coordinates and ni/nj)
@@ -54,6 +62,8 @@ public:
 	bool loadFromCGNS(const std::string& filename);
 
 	bool writeToCGNS(const std::string& filename);
+
+	bool writeToCGNSWithCellData(const std::string& filename, const SpatialDiscretization& discretization);
 
 	// Compute cell-centered metrics (centers, faces, normals, areas) for structured grid
 	// Must be called after node coordinates and ni,nj are set.
@@ -64,7 +74,7 @@ public:
 	// compute normals for immersed boundary faces pointing from face center to body surface
 	void computeImmersedBoundaryNormals(const std::vector<double>& geom_x, const std::vector<double>& geom_y);
 
-	void assignFaceTypes();
+	void assignFaceAndCellTypes();
 
 	// helpers
 	inline int nodeIndex(int i, int j) const { return j*ni + i; }

@@ -1,4 +1,5 @@
 #include "mesh.h"
+#include "SpatialDiscretization.h"
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -238,6 +239,15 @@ void Mesh::computeStructuredMetrics() {
 			}
 		}
 	}
+
+	for (int cell = 0; cell < ncells; ++cell) {
+		int face0 = cell_faces[cell][0];
+		int face1 = cell_faces[cell][1];
+		int face2 = cell_faces[cell][2];
+		int face3 = cell_faces[cell][3];
+		avg_face_area_x.push_back(0.5*(faces[face1].area + faces[face3].area));
+		avg_face_area_y.push_back(0.5*(faces[face0].area + faces[face2].area));
+	}
 }
 
 void Mesh::levelSet(std::vector<double> geom_x, std::vector<double> geom_y) {
@@ -348,10 +358,11 @@ void Mesh::levelSet(std::vector<double> geom_x, std::vector<double> geom_y) {
 	}
 }
 
-void Mesh::assignFaceTypes() {
+void Mesh::assignFaceAndCellTypes() {
 	farfieldFaces.clear();
 	immersedBoundaryFaces.clear();
 	fluidFaces.clear();
+	fluidCells.clear();
 
 	for (size_t fid = 0; fid < faces.size(); ++fid) {
 		auto &F = faces[fid];
@@ -365,6 +376,12 @@ void Mesh::assignFaceTypes() {
 			if (leftType == 1 && rightType == 1) {
 				fluidFaces.push_back((int)fid);
 			}
+		}
+	}
+
+	for (int c = 0; c < ncells; ++c) {
+		if (cell_types[c] == 1) {
+			fluidCells.push_back(c);
 		}
 	}
 }
@@ -512,6 +529,131 @@ bool Mesh::writeToCGNS(const std::string& filename) {
 	if (!cz.empty()) writeField("cz", cz.data(), cz.size());
 	if (!volume.empty()) writeField("volume", volume.data(), volume.size());
 	if (!phi.empty()) writeField("phi", phi.data(), phi.size());
+
+	// write integer cell_types as doubles (CGNS fields are typed; write as double conversion)
+	if (!cell_types.empty()) {
+		std::vector<double> ct_double(ncells);
+		for (int i=0;i<ncells;++i) ct_double[i] = static_cast<double>(cell_types[i]);
+		writeField("cell_types", ct_double.data(), ct_double.size());
+	}
+
+	// close file
+	ier = cg_close(file_index);
+	if (ier != CG_OK) {
+		std::cerr << "cg_close failed: " << cg_get_error() << std::endl;
+		return false;
+	}
+	return true;
+}
+
+bool Mesh::writeToCGNSWithCellData(const std::string& filename, const SpatialDiscretization& discretization) {
+	// Remove existing file to ensure a clean write
+	std::remove(filename.c_str());
+	// Open file for writing (create new)
+	int file_index = 0;
+	int ier = cg_open(filename.c_str(), CG_MODE_WRITE, &file_index);
+	if (ier != CG_OK) {
+		std::cerr << "cg_open write failed: " << cg_get_error() << std::endl;
+		return false;
+	}
+
+	// choose cell/physical dims
+	int cellDim = 2;
+	int physDim = (z.empty() ? 2 : 3);
+
+	int base = 0;
+	ier = cg_base_write(file_index, "Base", cellDim, physDim, &base);
+	if (ier != CG_OK) {
+		std::cerr << "cg_base_write failed: " << cg_get_error() << std::endl;
+		cg_close(file_index);
+		return false;
+	}
+
+	// zone size: structured grid with ni x nj vertices
+	int zone = 0;
+	// For 2D structured grids CGNS commonly expects a 6-element size array: vertex_size(ni,nj,?), cell_size(ni-1,nj-1,?),
+	// we'll provide the 2D-friendly 6-element variant (vertex then cell sizes) to avoid mismatches.
+	// ordering: VertexSize[0..1], CellSize[0..1], BndSize[0..1]
+	cgsize_t zone_size6[6] = { (cgsize_t)ni, (cgsize_t)nj, (cgsize_t)std::max(0, ni-1), (cgsize_t)std::max(0, nj-1), (cgsize_t)0, (cgsize_t)0 };
+	ier = cg_zone_write(file_index, base, "Zone", zone_size6, CGNS_ENUMV(Structured), &zone);
+	if (ier != CG_OK) {
+		const char* msg = cg_get_error();
+		if (msg && std::strlen(msg) > 0) std::cerr << "cg_zone_write failed: " << msg << std::endl;
+		else std::cerr << "cg_zone_write failed with code " << ier << std::endl;
+		cg_close(file_index);
+		return false;
+	}
+
+	// write coordinates (assume node ordering matches mesh.x/mesh.y arrays)
+	if (!x.empty()) {
+		int coord_index = 0;
+		int ret = cg_coord_write(file_index, base, zone, CGNS_ENUMV(RealDouble), "CoordinateX", x.data(), &coord_index);
+		if (ret != CG_OK) {
+			const char* msg = cg_get_error();
+			std::cerr << "cg_coord_write X failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
+		}
+	}
+	if (!y.empty()) {
+		int coord_index = 0;
+		int ret = cg_coord_write(file_index, base, zone, CGNS_ENUMV(RealDouble), "CoordinateY", y.data(), &coord_index);
+		if (ret != CG_OK) {
+			const char* msg = cg_get_error();
+			std::cerr << "cg_coord_write Y failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
+		}
+	}
+	if (!z.empty()) {
+		int coord_index = 0;
+		int ret = cg_coord_write(file_index, base, zone, CGNS_ENUMV(RealDouble), "CoordinateZ", z.data(), &coord_index);
+		if (ret != CG_OK) {
+			const char* msg = cg_get_error();
+			std::cerr << "cg_coord_write Z failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
+		}
+	}
+
+	// Create a solution node at cell centers and write cell-centered fields
+	int sol = 0;
+	ier = cg_sol_write(file_index, base, zone, "CellData", CGNS_ENUMV(CellCenter), &sol);
+	if (ier != CG_OK) {
+		std::cerr << "cg_sol_write failed: " << cg_get_error() << std::endl;
+		cg_close(file_index);
+		return false;
+	}
+
+	// Utility lambda to write a field if data exists and has correct size
+	auto writeField = [&](const char* name, const double* data, size_t n)->void {
+		if (!data) return;
+		if ((int)n != ncells) {
+			std::cerr << "Warning: field '" << name << "' size mismatch (expected " << ncells << ")\n";
+			return;
+		}
+		int field_index = 0;
+		int ret = cg_field_write(file_index, base, zone, sol, CGNS_ENUMV(RealDouble), name, (void*)data, &field_index);
+		if (ret != CG_OK) {
+			const char* msg = cg_get_error();
+			std::cerr << "cg_field_write " << name << " failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
+		}
+	};
+
+	// write double arrays
+	if (!cx.empty()) writeField("cx", cx.data(), cx.size());
+	if (!cy.empty()) writeField("cy", cy.data(), cy.size());
+	if (!cz.empty()) writeField("cz", cz.data(), cz.size());
+	if (!volume.empty()) writeField("volume", volume.data(), volume.size());
+	if (!phi.empty()) writeField("phi", phi.data(), phi.size());
+	// write discretization fields
+	if (!discretization.W0.empty()) writeField("W0", discretization.W0.data(), discretization.W0.size());
+	if (!discretization.W1.empty()) writeField("W1", discretization.W1.data(), discretization.W1.size());
+	if (!discretization.W2.empty()) writeField("W2", discretization.W2.data(), discretization.W2.size());
+	if (!discretization.W3.empty()) writeField("W3", discretization.W3.data(), discretization.W3.size());
+	if (!discretization.rhorho.empty()) writeField("rho", discretization.rhorho.data(), discretization.rhorho.size());
+	if (!discretization.uu.empty()) writeField("u", discretization.uu.data(), discretization.uu.size());
+	if (!discretization.vv.empty()) writeField("v", discretization.vv.data(), discretization.vv.size());
+	if (!discretization.EE.empty()) writeField("E", discretization.EE.data(), discretization.EE.size());
+	if (!discretization.pp.empty()) writeField("p", discretization.pp.data(), discretization.pp.size());
+	if (!discretization.Rc0.empty()) writeField("Rc0", discretization.Rc0.data(), discretization.Rc0.size());
+	if (!discretization.Rc1.empty()) writeField("Rc1", discretization.Rc1.data(), discretization.Rc1.size());
+	if (!discretization.Rc2.empty()) writeField("Rc2", discretization.Rc2.data(), discretization.Rc2.size());
+	if (!discretization.Rc3.empty()) writeField("Rc3", discretization.Rc3.data(), discretization.Rc3.size());
 
 	// write integer cell_types as doubles (CGNS fields are typed; write as double conversion)
 	if (!cell_types.empty()) {
