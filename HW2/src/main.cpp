@@ -171,11 +171,10 @@ int main(int argc, char* argv[]) {
     std::cout << "Initialized SpatialDiscretization with Mach=" << FVM.Mach_
               << ", alpha=" << FVM.alpha_ << ", k2=" << FVM.k2_ << ", k4=" << FVM.k4_ << std::endl;
     FVM.initializeVariables();
-    FVM.run_odd();
 
-    // TemporalDiscretization solver(FVM, CFL, it_max);
-    // std::cout << "Initialized TemporalDiscretization with CFL=" << solver.CFL_ << " and max iterations=" << solver.it_max_ << std::endl;
-    // solver.solve();
+    TemporalDiscretization solver(FVM, CFL, it_max);
+    std::cout << "Initialized TemporalDiscretization with CFL=" << solver.CFL_ << " and max iterations=" << solver.it_max_ << std::endl;
+    solver.solve();
 
     if (!mesh.writeToCGNSWithCellData(input_out_filename, FVM)) {
         std::cerr << "Failed to write CGNS with cell data." << std::endl;

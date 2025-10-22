@@ -42,6 +42,7 @@ void TemporalDiscretization::RungeKuttaStep() {
         spatialDiscretization_.W2[cell] = W2_0[cell] - a1 * dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc2[cell] - Rd2_0[cell]);
         spatialDiscretization_.W3[cell] = W3_0[cell] - a1 * dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc3[cell] - Rd3_0[cell]);
     }
+    spatialDiscretization_.mesh_.writeToCGNSWithCellData("out_rk1.cgns", spatialDiscretization_);
 
     // Stage 2
     spatialDiscretization_.run_even();
@@ -94,7 +95,6 @@ void TemporalDiscretization::RungeKuttaStep() {
         spatialDiscretization_.W2[cell] = W2_0[cell] - a5 * dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc2[cell] - Rd2_0[cell]);
         spatialDiscretization_.W3[cell] = W3_0[cell] - a5 * dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc3[cell] - Rd3_0[cell]);
     }
-    printVector(spatialDiscretization_.W0, "W0 after Stage 1");
 }
 
 void TemporalDiscretization::solve() {

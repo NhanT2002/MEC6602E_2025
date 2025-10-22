@@ -808,6 +808,14 @@ bool Mesh::writeToCGNSWithCellData(const std::string& filename, const SpatialDis
 	if (!R1.empty()) writeField("R1", R1.data(), R1.size());
 	if (!R2.empty()) writeField("R2", R2.data(), R2.size());
 	if (!R3.empty()) writeField("R3", R3.data(), R3.size());
+	if (!discretization.Rc0.empty()) writeField("Rc0", discretization.Rc0.data(), discretization.Rc0.size());
+	if (!discretization.Rc1.empty()) writeField("Rc1", discretization.Rc1.data(), discretization.Rc1.size());
+	if (!discretization.Rc2.empty()) writeField("Rc2", discretization.Rc2.data(), discretization.Rc2.size());
+	if (!discretization.Rc3.empty()) writeField("Rc3", discretization.Rc3.data(), discretization.Rc3.size());
+	if (!discretization.Rd0.empty()) writeField("Rd0", discretization.Rd0.data(), discretization.Rd0.size());
+	if (!discretization.Rd1.empty()) writeField("Rd1", discretization.Rd1.data(), discretization.Rd1.size());
+	if (!discretization.Rd2.empty()) writeField("Rd2", discretization.Rd2.data(), discretization.Rd2.size());
+	if (!discretization.Rd3.empty()) writeField("Rd3", discretization.Rd3.data(), discretization.Rd3.size());
 
 	// write integer cell_types as doubles (CGNS fields are typed; write as double conversion)
 	if (!cell_types.empty()) {
