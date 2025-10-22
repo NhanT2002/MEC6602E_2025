@@ -21,10 +21,10 @@ void printVector(const std::vector<int>& vec, const std::string& name) {
     std::cout << std::endl;
 }
 
-double l2Norm(const std::vector<double>& u_np1, const std::vector<double>& u_n) {
+double l2Norm(const std::vector<double>& u) {
     double sum = 0.0;
-    for (size_t i = 1; i < u_np1.size()-1; ++i) {
-        sum += (u_np1[i] - u_n[i]) * (u_np1[i] - u_n[i]);
+    for (size_t i = 1; i < u.size()-1; ++i) {
+        sum += u[i] * u[i];
     }
     return std::sqrt(sum);
 }

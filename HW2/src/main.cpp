@@ -14,8 +14,9 @@
 #include "mesh.h"
 #include "helper.h"
 #include "SpatialDiscretization.h"
+#include "TemporalDiscretization.h"
 
-std::tuple<std::string, std::string, std::string, double, double, double, double> readInputFile(const std::string& filename) {
+std::tuple<std::string, std::string, std::string, double, double, double, double, double, int> readInputFile(const std::string& filename) {
     std::ifstream input_file(filename);
     if (!input_file) {
         std::cerr << "Error opening input file: " << filename << std::endl;
@@ -38,6 +39,8 @@ std::tuple<std::string, std::string, std::string, double, double, double, double
     double alpha = 0.0;
     double k2 = 0.0;
     double k4 = 0.0;
+    double CFL = 0.0;
+    int it_max = 0;
 
     std::string line;
     while (std::getline(input_file, line)) {
@@ -68,12 +71,16 @@ std::tuple<std::string, std::string, std::string, double, double, double, double
             k2 = std::stod(value);
         } else if (key == "k4") {
             k4 = std::stod(value);
+        } else if (key == "CFL") {
+            CFL = std::stod(value);
+        } else if (key == "it_max") {
+            it_max = std::stoi(value);
         }
     }
 
     if (output_filename.empty()) output_filename = "out.cgns";
 
-    return {mesh_filename, geometry_filename, output_filename, Mach, alpha, k2, k4};
+    return {mesh_filename, geometry_filename, output_filename, Mach, alpha, k2, k4, CFL, it_max};
 }
 
 int main(int argc, char* argv[]) {
@@ -87,7 +94,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Input file: " << input_filename << std::endl;
 
-    auto [mesh_filename, geometry_filename, input_out_filename, Mach, alpha, k2, k4] = readInputFile(input_filename);
+    auto [mesh_filename, geometry_filename, input_out_filename, Mach, alpha, k2, k4, CFL, it_max] = readInputFile(input_filename);
 
     std::cout << "Mesh filename: " << mesh_filename << std::endl;
     std::cout << "Geometry filename: " << geometry_filename << std::endl;
@@ -96,6 +103,8 @@ int main(int argc, char* argv[]) {
     std::cout << "Alpha: " << alpha << std::endl;
     std::cout << "k2: " << k2 << std::endl;
     std::cout << "k4: " << k4 << std::endl;
+    std::cout << "CFL: " << CFL << std::endl;
+    std::cout << "Maximum iterations: " << it_max << std::endl;
 
     // Read mesh coordinates
     Mesh mesh;
@@ -161,13 +170,12 @@ int main(int argc, char* argv[]) {
     SpatialDiscretization FVM(mesh, Mach, alpha, k2, k4);
     std::cout << "Initialized SpatialDiscretization with Mach=" << FVM.Mach_
               << ", alpha=" << FVM.alpha_ << ", k2=" << FVM.k2_ << ", k4=" << FVM.k4_ << std::endl;
-
     FVM.initializeVariables();
-    FVM.compute_convective_fluxes();
-    FVM.compute_lambdas();
-    FVM.compute_diffusive_fluxes();
-    FVM.compute_residuals();
-    FVM.updatePrimitivesVariables();
+    FVM.run_odd();
+
+    // TemporalDiscretization solver(FVM, CFL, it_max);
+    // std::cout << "Initialized TemporalDiscretization with CFL=" << solver.CFL_ << " and max iterations=" << solver.it_max_ << std::endl;
+    // solver.solve();
 
     if (!mesh.writeToCGNSWithCellData(input_out_filename, FVM)) {
         std::cerr << "Failed to write CGNS with cell data." << std::endl;

@@ -1,12 +1,13 @@
 import Converter.PyTree as C
-import Geom.IBM as D_IBM
 import Geom.PyTree as D
-import Generator.PyTree as G
+import Generator.IBM as G_IBM
+import Geom.IBM as D_IBM
 
-a = D.naca("0012")
-D_IBM._setSnear(a,0.01)
-a = D_IBM.setDfar(a, 10)
-D_IBM._setIBCType(a, "slip")
-D_IBM._setFluidInside(a)
-octree = G.octree([a], [0.01], dfar=10.0, balancing=2)
-C.convertPyTree2File(octree, 'naca_unstructured.cgns')
+tb = D.naca('0012', N=1001)
+tb = D_IBM.setDfar(tb, 10.)
+tb = D_IBM.setSnear(tb, 0.02)
+tb = C.newPyTree(['Base', tb])
+
+t = G_IBM.generateIBMMesh(tb, dimPb=2, vmin=21, octreeMode=1, check=False)
+
+C.convertPyTree2File(t, 'out.cgns')

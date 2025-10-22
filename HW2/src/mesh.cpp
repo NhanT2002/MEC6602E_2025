@@ -1,4 +1,5 @@
 #include "mesh.h"
+#include "helper.h"
 #include "SpatialDiscretization.h"
 #include <iostream>
 #include <sstream>
@@ -490,6 +491,9 @@ void Mesh::assignFaceAndCellTypes() {
 		if (cell_types[c] == 1) {
 			fluidCells.push_back(c);
 		}
+		if (cell_types[c] == 0) {
+			ghostCells.push_back(c);
+		}
 	}
 }
 
@@ -519,15 +523,11 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 	};
 
 	for (int fid : immersedBoundaryFaces) {
-		if (fid < 0 || fid >= (int)faces.size()) continue;
-		auto &F = faces[fid];
-		// prefer the adjacent fluid cell center as the origin so the normal points from fluid -> body
-		double ox = F.cx, oy = F.cy;
-		int fluidCell = -1;
-		if (F.leftCell >= 0 && cell_types[F.leftCell] == 1) fluidCell = F.leftCell;
-		else if (F.rightCell >= 0 && cell_types[F.rightCell] == 1) fluidCell = F.rightCell;
-		if (fluidCell >= 0) { ox = cx[fluidCell]; oy = cy[fluidCell]; }
-
+		int leftCell = faces[fid].leftCell;
+		int rightCell = faces[fid].rightCell;
+		int leftCellType = cell_types[leftCell];
+		int ghostCell = (leftCellType != 1) ? leftCell : rightCell;
+		double ox = cx[ghostCell], oy = cy[ghostCell];
 		double min_d = std::numeric_limits<double>::infinity();
 		double best_x=ox, best_y=oy;
 		for (const auto &s : segs) {
@@ -537,8 +537,31 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 		}
 		double vx = best_x - ox; double vy = best_y - oy;
 		double norm = std::sqrt(vx*vx + vy*vy);
-		if (norm > 0.0) { F.ib_nx = vx / norm; F.ib_ny = vy / norm; F.ib_nz = 0.0; }
-		else { F.ib_nx = 0.0; F.ib_ny = 0.0; F.ib_nz = 0.0; }
+		double nx = vx / norm;
+		double ny = vy / norm;
+
+		faces[fid].ib_nx = nx;
+		faces[fid].ib_ny = ny;
+		faces[fid].x_mirror = best_x + vx;
+		faces[fid].y_mirror = best_y + vy;
+
+		// find nearest 4 adjacent cell to the mirror point and store it
+		std::vector<double> dists;
+		for (int c : fluidCells) {
+			double dx = faces[fid].x_mirror - cx[c];
+			double dy = faces[fid].y_mirror - cy[c];
+			double dist = std::sqrt(dx*dx + dy*dy);
+			dists.push_back(dist);
+		}
+		// sort distances to find 4 nearest
+		std::vector<size_t> indices(dists.size());
+		for (size_t i = 0; i < dists.size(); ++i) indices[i] = i;
+		std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) { return dists[a] < dists[b]; });
+		faces[fid].adjacentCells.clear();
+		for (size_t k = 0; k < 4 && k < indices.size(); ++k) {
+			faces[fid].adjacentCells.push_back(fluidCells[indices[k]]);
+			faces[fid].adjacentDistances.push_back(dists[indices[k]]);
+		}
 	}
 }
 
@@ -740,8 +763,31 @@ bool Mesh::writeToCGNSWithCellData(const std::string& filename, const SpatialDis
 			std::cerr << "cg_field_write " << name << " failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
 		}
 	};
+	std::vector<double> R0 (ncells, 0.0);
+	std::vector<double> R1 (ncells, 0.0);
+	std::vector<double> R2 (ncells, 0.0);
+	std::vector<double> R3 (ncells, 0.0);
+	for (int c=0;c<ncells;++c) {
+		R0[c] = discretization.Rc0[c] - discretization.Rd0[c];
+		R1[c] = discretization.Rc1[c] - discretization.Rd1[c];
+		R2[c] = discretization.Rc2[c] - discretization.Rd2[c];
+		R3[c] = discretization.Rc3[c] - discretization.Rd3[c];
+	}
+	std::vector<double> machCell (ncells, 0.0);
+	for (int c=0;c<ncells;++c) {
+		double u = discretization.uu[c];
+		double v = discretization.vv[c];
+		double p = discretization.pp[c];
+		double rho = discretization.rhorho[c];
+		machCell[c] = mach(discretization.gamma_, rho, p, u, v);
+	}
+	std::vector<double> cellId (ncells, 0.0);
+	for (int c=0;c<ncells;++c) {
+		cellId[c] = static_cast<double>(c);
+	}
 
 	// write double arrays
+	if (!cellId.empty()) writeField("cellId", cellId.data(), cellId.size());
 	if (!cx.empty()) writeField("cx", cx.data(), cx.size());
 	if (!cy.empty()) writeField("cy", cy.data(), cy.size());
 	if (!cz.empty()) writeField("cz", cz.data(), cz.size());
@@ -757,10 +803,11 @@ bool Mesh::writeToCGNSWithCellData(const std::string& filename, const SpatialDis
 	if (!discretization.vv.empty()) writeField("v", discretization.vv.data(), discretization.vv.size());
 	if (!discretization.EE.empty()) writeField("E", discretization.EE.data(), discretization.EE.size());
 	if (!discretization.pp.empty()) writeField("p", discretization.pp.data(), discretization.pp.size());
-	if (!discretization.Rc0.empty()) writeField("Rc0", discretization.Rc0.data(), discretization.Rc0.size());
-	if (!discretization.Rc1.empty()) writeField("Rc1", discretization.Rc1.data(), discretization.Rc1.size());
-	if (!discretization.Rc2.empty()) writeField("Rc2", discretization.Rc2.data(), discretization.Rc2.size());
-	if (!discretization.Rc3.empty()) writeField("Rc3", discretization.Rc3.data(), discretization.Rc3.size());
+	if (!machCell.empty()) writeField("Mach", machCell.data(), machCell.size());
+	if (!R0.empty()) writeField("R0", R0.data(), R0.size());
+	if (!R1.empty()) writeField("R1", R1.data(), R1.size());
+	if (!R2.empty()) writeField("R2", R2.data(), R2.size());
+	if (!R3.empty()) writeField("R3", R3.data(), R3.size());
 
 	// write integer cell_types as doubles (CGNS fields are typed; write as double conversion)
 	if (!cell_types.empty()) {

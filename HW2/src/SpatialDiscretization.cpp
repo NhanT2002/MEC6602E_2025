@@ -42,6 +42,44 @@ void SpatialDiscretization::initializeVariables() {
 
 }
 
+void SpatialDiscretization::updateGhostCells() {
+    std::cout << "face, ghostCell, u_mirror, v_mirror, u_ghost, v_ghost, cx, cy\n";
+    for (auto face : mesh_.immersedBoundaryFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        int ghostCell = (leftCellType == 0) ? leftCell : rightCell;
+        double rho_mirror = 0.0, u_mirror = 0.0, v_mirror = 0.0, E_mirror = 0.0, p_mirror = 0.0;
+        double total_weight = 0.0;
+        for (size_t k = 0; k < mesh_.faces[face].adjacentCells.size(); ++k) {
+            int adjCell = mesh_.faces[face].adjacentCells[k];
+            double dist = mesh_.faces[face].adjacentDistances[k];
+            double weight = 1.0 / dist;
+            rho_mirror += rhorho[adjCell] * weight;
+            u_mirror += uu[adjCell] * weight;
+            v_mirror += vv[adjCell] * weight;
+            E_mirror += EE[adjCell] * weight;
+            p_mirror += pp[adjCell] * weight;
+            total_weight += weight;
+        }
+        rho_mirror /= total_weight;
+        u_mirror /= total_weight;
+        v_mirror /= total_weight;
+        E_mirror /= total_weight;
+        p_mirror /= total_weight;
+
+        uu[ghostCell] = u_mirror - 2.0 * (u_mirror * mesh_.faces[face].ib_nx + v_mirror * mesh_.faces[face].ib_ny) * mesh_.faces[face].ib_nx;
+        vv[ghostCell] = v_mirror - 2.0 * (u_mirror * mesh_.faces[face].ib_nx + v_mirror * mesh_.faces[face].ib_ny) * mesh_.faces[face].ib_ny;
+        rhorho[ghostCell] = rho_mirror;
+        pp[ghostCell] = p_mirror;
+        EE[ghostCell] = p_mirror / ((gamma_ - 1.0) * rho_mirror) + 0.5 * (uu[ghostCell] * uu[ghostCell] + vv[ghostCell] * vv[ghostCell]);
+
+        std::cout << face << ", " << ghostCell << ", " << u_mirror << ", " << v_mirror 
+                << ", " << uu[ghostCell] << ", " << vv[ghostCell] 
+                << ", " << mesh_.cx[ghostCell] << ", " << mesh_.cy[ghostCell] << "\n";
+    }
+}
+
 std::tuple<double, double, double, double> SpatialDiscretization::compute_conservative_fluxes_IB(int fluidCell, int fluidCell_p1, int fluidCell_p2, 
                                         double area, double ib_nx, double ib_ny) {
     double uwall = 0.125*(15*this->uu[fluidCell] - 10*this->uu[fluidCell_p1] + 3*this->uu[fluidCell_p2]); // 2nd order extrapolation
@@ -545,22 +583,22 @@ std::tuple<double, double> SpatialDiscretization::epsilon(double p_Im1, double p
     return {eps2, eps4};
 }
 
-void SpatialDiscretization::compute_residuals() {
+void SpatialDiscretization::compute_convective_residuals() {
     for (auto face : mesh_.fluidFaces) {
         int leftCell = mesh_.faces[face].leftCell;
         int rightCell = mesh_.faces[face].rightCell;
 
         // Update residuals for left cell
-        Rc0[leftCell] += F0[face] - D0[face];
-        Rc1[leftCell] += F1[face] - D1[face];
-        Rc2[leftCell] += F2[face] - D2[face];
-        Rc3[leftCell] += F3[face] - D3[face];
+        Rc0[leftCell] += F0[face];
+        Rc1[leftCell] += F1[face];
+        Rc2[leftCell] += F2[face];
+        Rc3[leftCell] += F3[face];
 
         // Update residuals for right cell
-        Rc0[rightCell] -= F0[face] - D0[face];
-        Rc1[rightCell] -= F1[face] - D1[face];
-        Rc2[rightCell] -= F2[face] - D2[face];
-        Rc3[rightCell] -= F3[face] - D3[face];
+        Rc0[rightCell] -= F0[face];
+        Rc1[rightCell] -= F1[face];
+        Rc2[rightCell] -= F2[face];
+        Rc3[rightCell] -= F3[face];
     }
 
     for (auto face : mesh_.immersedBoundaryFaces) {
@@ -570,10 +608,10 @@ void SpatialDiscretization::compute_residuals() {
         int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
 
         // Update residuals for fluid cell only
-        Rc0[fluidCell] += F0[face] - D0[face];
-        Rc1[fluidCell] += F1[face] - D1[face];
-        Rc2[fluidCell] += F2[face] - D2[face];
-        Rc3[fluidCell] += F3[face] - D3[face];
+        Rc0[fluidCell] += F0[face];
+        Rc1[fluidCell] += F1[face];
+        Rc2[fluidCell] += F2[face];
+        Rc3[fluidCell] += F3[face];
     }
 
     for (auto face : mesh_.farfieldFaces) {
@@ -583,12 +621,58 @@ void SpatialDiscretization::compute_residuals() {
         int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
 
         // Update residuals for fluid cell only
-        Rc0[fluidCell] += F0[face] - D0[face];
-        Rc1[fluidCell] += F1[face] - D1[face];
-        Rc2[fluidCell] += F2[face] - D2[face];
-        Rc3[fluidCell] += F3[face] - D3[face];
+        Rc0[fluidCell] += F0[face];
+        Rc1[fluidCell] += F1[face];
+        Rc2[fluidCell] += F2[face];
+        Rc3[fluidCell] += F3[face];
     }
 }
+
+void SpatialDiscretization::compute_diffusive_residuals() {
+    for (auto face : mesh_.fluidFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+
+        // Update residuals for left cell
+        Rd0[leftCell] += D0[face];
+        Rd1[leftCell] += D1[face];
+        Rd2[leftCell] += D2[face];
+        Rd3[leftCell] += D3[face];
+
+        // Update residuals for right cell
+        Rd0[rightCell] -= D0[face];
+        Rd1[rightCell] -= D1[face];
+        Rd2[rightCell] -= D2[face];
+        Rd3[rightCell] -= D3[face];
+    }
+
+    for (auto face : mesh_.immersedBoundaryFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+
+        // Update residuals for fluid cell only
+        Rd0[fluidCell] += D0[face];
+        Rd1[fluidCell] += D1[face];
+        Rd2[fluidCell] += D2[face];
+        Rd3[fluidCell] += D3[face];
+    }
+
+    for (auto face : mesh_.farfieldFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+
+        // Update residuals for fluid cell only
+        Rd0[fluidCell] += D0[face];
+        Rd1[fluidCell] += D1[face];
+        Rd2[fluidCell] += D2[face];
+        Rd3[fluidCell] += D3[face];
+    }
+}
+
 
 void SpatialDiscretization::updatePrimitivesVariables() {
     for (auto cell : mesh_.fluidCells) {
@@ -598,4 +682,21 @@ void SpatialDiscretization::updatePrimitivesVariables() {
         EE[cell] = W3[cell] / W0[cell];
         pp[cell] = pressure(gamma_, rhorho[cell], uu[cell], vv[cell], EE[cell]);
     }
+}
+
+void SpatialDiscretization::run_even() {
+    updatePrimitivesVariables();
+    updateGhostCells();
+    compute_convective_fluxes();
+    compute_convective_residuals();
+}
+
+void SpatialDiscretization::run_odd() {
+    updatePrimitivesVariables();
+    updateGhostCells();
+    compute_lambdas();
+    compute_convective_fluxes();
+    compute_diffusive_fluxes();
+    compute_convective_residuals();
+    compute_diffusive_residuals();
 }

@@ -43,6 +43,9 @@ public:
 		bool isImmersedBoundary = false;
 		// immersed boundary normal (points from face center to nearest body point)
 		double ib_nx = 0, ib_ny = 0, ib_nz = 0;
+		double x_mirror = 0, y_mirror = 0, z_mirror = 0; // mirror point coordinates for IB faces
+		std::vector<int> adjacentCells; // for future use: list of adjacent cells
+		std::vector<double> adjacentDistances; // distances to adjacent cells
 	};
 
 	std::vector<Face> faces; // all unique faces
@@ -77,6 +80,7 @@ public:
 	std::vector<int> fluidFacesZ_p1; // special case for calculating dissipation
 
 	std::vector<int> fluidCells; // indices of fluid cells
+	std::vector<int> ghostCells; // indices of ghost cells
 
 	Mesh() = default;
 
