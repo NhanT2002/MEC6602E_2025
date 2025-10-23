@@ -546,6 +546,8 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 		faces[fid].ib_ny = ny;
 		faces[fid].x_mirror = best_x + vx;
 		faces[fid].y_mirror = best_y + vy;
+		faces[fid].x_BI = best_x;
+		faces[fid].y_BI = best_y;
 
 		// find nearest 4 adjacent cell to the mirror point and store it
 		std::vector<double> dists;
@@ -831,6 +833,64 @@ bool Mesh::writeToCGNSWithCellData(const std::string& filename, const SpatialDis
 		for (int i=0;i<ncells;++i) ct_double[i] = static_cast<double>(cell_types[i]);
 		writeField("cell_types", ct_double.data(), ct_double.size());
 	}
+
+	// write wall solution
+	std::vector<double> x_wall;
+	std::vector<double> y_wall;
+	std::vector<double> z_wall;
+	std::vector<double> rho_wall;
+	std::vector<double> u_wall;
+	std::vector<double> v_wall;
+	std::vector<double> p_wall;
+	std::vector<double> EB_wall;
+	for (auto face : immersedBoundaryFaces) {
+		double xB = faces[face].x_BI;
+		double yB = faces[face].y_BI;
+		double zB = faces[face].z_BI;
+		double rhoB = faces[face].rho_BI;
+		double uB = faces[face].u_BI;
+		double vB = faces[face].v_BI;
+		double pB = faces[face].p_BI;
+		double EB = faces[face].E_BI;
+		x_wall.push_back(xB);
+		y_wall.push_back(yB);
+		z_wall.push_back(zB);
+		rho_wall.push_back(rhoB);
+		u_wall.push_back(uB);
+		v_wall.push_back(vB);
+		p_wall.push_back(pB);
+		EB_wall.push_back(EB);
+	}
+	// create new node for wall solution
+	int sol_wall = 0;
+	ier = cg_sol_write(file_index, base, zone, "WallData", CGNS_ENUMV(Vertex), &sol_wall);
+	if (ier != CG_OK) {
+		std::cerr << "cg_sol_write WallData failed: " << cg_get_error() << std::endl;
+		cg_close(file_index);
+		return false;
+	}
+	// write wall fields
+	auto writeWallField = [&](const char* name, const double* data, size_t n)->void {
+		if (!data) return;
+		if ((size_t)n != immersedBoundaryFaces.size()) {
+			std::cerr << "Warning: field '" << name << "' size mismatch (expected " << immersedBoundaryFaces.size() << ")\n";
+			return;
+		}
+		int field_index = 0;
+		int ret = cg_field_write(file_index, base, zone, sol_wall, CGNS_ENUMV(RealDouble), name, (void*)data, &field_index);
+		if (ret != CG_OK) {
+			const char* msg = cg_get_error();
+			std::cerr << "cg_field_write Wall " << name << " failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
+		}
+	};
+	if (!x_wall.empty()) writeWallField("CoordinateX", x_wall.data(), x_wall.size());
+	if (!y_wall.empty()) writeWallField("CoordinateY", y_wall.data(), y_wall.size());
+	if (!z_wall.empty()) writeWallField("CoordinateZ", z_wall.data(), z_wall.size());
+	if (!rho_wall.empty()) writeWallField("rho", rho_wall.data(), rho_wall.size());
+	if (!u_wall.empty()) writeWallField("u", u_wall.data(), u_wall.size());
+	if (!v_wall.empty()) writeWallField("v", v_wall.data(), v_wall.size());
+	if (!p_wall.empty()) writeWallField("p", p_wall.data(), p_wall.size());
+	if (!EB_wall.empty()) writeWallField("E", EB_wall.data(), EB_wall.size());
 
 	// close file
 	ier = cg_close(file_index);

@@ -44,6 +44,13 @@ public:
 		// immersed boundary normal (points from face center to nearest body point)
 		double ib_nx = 0, ib_ny = 0, ib_nz = 0;
 		double x_mirror = 0, y_mirror = 0, z_mirror = 0; // mirror point coordinates for IB faces
+		double x_BI = 0, y_BI = 0, z_BI = 0; // body intersection point coordinates for IB faces
+		double rho_BI = 0; // pressure at body intersection point for IB faces
+		double u_BI = 0;   // velocity u at body intersection point for IB faces
+		double v_BI = 0;   // velocity v at body intersection point for IB faces
+		double w_BI = 0;   // velocity w at body intersection point for IB faces
+		double E_BI = 0;   // energy at body intersection point for IB faces
+		double p_BI = 0;   // pressure at body intersection point for IB faces
 		std::vector<int> adjacentCells; // for future use: list of adjacent cells
 		std::vector<double> adjacentDistances; // distances to adjacent cells
 	};
