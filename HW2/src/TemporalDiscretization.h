@@ -21,6 +21,7 @@ public:
 
     void compute_dt();
 
+    void eulerStep();
     void RungeKuttaStep();
 
     void solve();

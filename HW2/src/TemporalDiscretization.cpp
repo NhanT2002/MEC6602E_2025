@@ -23,6 +23,17 @@ void TemporalDiscretization::compute_dt() {
     }
 }
 
+void TemporalDiscretization::eulerStep() {
+    spatialDiscretization_.run_odd();
+    for (auto cell : spatialDiscretization_.mesh_.fluidCells) {
+        double dt = dt_cells[cell];
+        spatialDiscretization_.W0[cell] -= dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc0[cell] - spatialDiscretization_.Rd0[cell]);
+        spatialDiscretization_.W1[cell] -= dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc1[cell] - spatialDiscretization_.Rd1[cell]);
+        spatialDiscretization_.W2[cell] -= dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc2[cell] - spatialDiscretization_.Rd2[cell]);
+        spatialDiscretization_.W3[cell] -= dt / spatialDiscretization_.mesh_.volume[cell] * (spatialDiscretization_.Rc3[cell] - spatialDiscretization_.Rd3[cell]);
+    }
+}
+
 void TemporalDiscretization::RungeKuttaStep() {
     std::vector<double> W0_0 = spatialDiscretization_.W0;
     std::vector<double> W1_0 = spatialDiscretization_.W1;
@@ -101,7 +112,8 @@ void TemporalDiscretization::solve() {
     spatialDiscretization_.run_odd();
     for (int it = 0; it < it_max_; ++it) {
         compute_dt();
-        RungeKuttaStep();
+        eulerStep();
+        auto [cl, cd, cm] = spatialDiscretization_.compute_aerodynamics_coefficients();
         std::vector<double> R0(spatialDiscretization_.Rc0.size());
         std::vector<double> R1(spatialDiscretization_.Rc1.size());
         std::vector<double> R2(spatialDiscretization_.Rc2.size());
@@ -119,10 +131,26 @@ void TemporalDiscretization::solve() {
         double res_r3 = l2Norm(R3);
 
         std::cout << "Iteration " << it+1 << ": "
-                  << " res_rho = " << res_r0
-                  << ", res_rho_u = " << res_r1
-                  << ", res_rho_v = " << res_r2
-                  << ", res_rho_E = " << res_r3 << std::endl;
+                  << " R0 = " << res_r0 << ", R1 = " << res_r1 << ", R2 = " << res_r2 << ", R3 = " << res_r3
+                  << ", cl = " << cl << ", cd = " << cd << ", cm = " << cm << std::endl;
+        // std::cout << "face, leftCell, rightCell, cx, cy, u_ib, v_ib\n";
+        // for (auto face : spatialDiscretization_.mesh_.immersedBoundaryFaces) {
+        //     const auto& F = spatialDiscretization_.mesh_.faces[face];
+        //     int leftCell = F.leftCell;
+        //     int rightCell = F.rightCell;
+        //     int fluidCell = (spatialDiscretization_.mesh_.cell_types[leftCell] == 1) ? leftCell : rightCell;
+        //     double u = spatialDiscretization_.uu[fluidCell];
+        //     double v = spatialDiscretization_.vv[fluidCell];
+        //     double cx = spatialDiscretization_.mesh_.cx[fluidCell];
+        //     double cy = spatialDiscretization_.mesh_.cy[fluidCell];
+        //     std::cout << face << ", " << leftCell << ", " << rightCell << ", "
+        //               << cx << ", " << cy << ", "
+        //               << u << ", " << v << "\n";
+        // }
+
+        if (res_r0 < 1e-12 || std::isnan(res_r0)) {
+            break;
+        }
 
     }
 }

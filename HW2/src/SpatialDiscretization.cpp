@@ -128,7 +128,7 @@ void SpatialDiscretization::compute_convective_fluxes() {
         F2[face] = (avg_W2 * V + avg_p * ny) * area;
         F3[face] = (avg_W3 * V + avg_p * V) * area;
     }
-    
+    std::cout << "face, leftCell, rightCell, cx, cy, u_ib, v_ib\n";
     for (auto face : mesh_.immersedBoundaryFaces) {
         int leftCell = mesh_.faces[face].leftCell;
         int rightCell = mesh_.faces[face].rightCell;
@@ -146,9 +146,9 @@ void SpatialDiscretization::compute_convective_fluxes() {
         double avg_E = avg_W3 / avg_W0;
         double avg_p = pressure(gamma_, avg_W0, avg_u, avg_v, avg_E);
 
-        // std::cout << face << ", " << leftCell << ", " << rightCell << ", "
-        //           << mesh_.faces[face].cx << ", " << mesh_.faces[face].cy << ", "
-        //           << avg_u << ", " << avg_v << "\n";
+        std::cout << face << ", " << leftCell << ", " << rightCell << ", "
+                  << mesh_.faces[face].cx << ", " << mesh_.faces[face].cy << ", "
+                  << avg_u << ", " << avg_v << "\n";
 
         // Compute fluxes
         double V = avg_u * nx + avg_v * ny;
@@ -694,31 +694,45 @@ void SpatialDiscretization::compute_diffusive_residuals() {
         Rd3[rightCell] -= D3[face];
     }
 
-    for (auto face : mesh_.immersedBoundaryFaces) {
-        int leftCell = mesh_.faces[face].leftCell;
-        int rightCell = mesh_.faces[face].rightCell;
-        int leftCellType = mesh_.cell_types[leftCell];
-        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+    // for (auto face : mesh_.immersedBoundaryFaces) {
+    //     int leftCell = mesh_.faces[face].leftCell;
+    //     int rightCell = mesh_.faces[face].rightCell;
+    //     int leftCellType = mesh_.cell_types[leftCell];
+    //     int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
 
-        // Update residuals for fluid cell only
-        Rd0[fluidCell] += D0[face];
-        Rd1[fluidCell] += D1[face];
-        Rd2[fluidCell] += D2[face];
-        Rd3[fluidCell] += D3[face];
-    }
+    //     // Update residuals for fluid cell only
+    //     if (fluidCell == leftCell) {
+    //         Rd0[fluidCell] += D0[face];
+    //         Rd1[fluidCell] += D1[face];
+    //         Rd2[fluidCell] += D2[face];
+    //         Rd3[fluidCell] += D3[face];
+    //     } else {
+    //         Rd0[fluidCell] -= D0[face];
+    //         Rd1[fluidCell] -= D1[face];
+    //         Rd2[fluidCell] -= D2[face];
+    //         Rd3[fluidCell] -= D3[face];
+    //     }
+    // }
 
-    for (auto face : mesh_.farfieldFaces) {
-        int leftCell = mesh_.faces[face].leftCell;
-        int rightCell = mesh_.faces[face].rightCell;
-        int leftCellType = mesh_.cell_types[leftCell];
-        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+    // for (auto face : mesh_.farfieldFaces) {
+    //     int leftCell = mesh_.faces[face].leftCell;
+    //     int rightCell = mesh_.faces[face].rightCell;
+    //     int leftCellType = mesh_.cell_types[leftCell];
+    //     int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
 
-        // Update residuals for fluid cell only
-        Rd0[fluidCell] += D0[face];
-        Rd1[fluidCell] += D1[face];
-        Rd2[fluidCell] += D2[face];
-        Rd3[fluidCell] += D3[face];
-    }
+    //     // Update residuals for fluid cell only
+    //     if (fluidCell == leftCell) {
+    //         Rd0[fluidCell] += D0[face];
+    //         Rd1[fluidCell] += D1[face];
+    //         Rd2[fluidCell] += D2[face];
+    //         Rd3[fluidCell] += D3[face];
+    //     } else {
+    //         Rd0[fluidCell] -= D0[face];
+    //         Rd1[fluidCell] -= D1[face];
+    //         Rd2[fluidCell] -= D2[face];
+    //         Rd3[fluidCell] -= D3[face];
+    //     }
+    // }
 }
 
 
@@ -747,4 +761,40 @@ void SpatialDiscretization::run_odd() {
     compute_diffusive_fluxes();
     compute_convective_residuals();
     compute_diffusive_residuals();
+}
+
+std::tuple<double, double, double> SpatialDiscretization::compute_aerodynamics_coefficients() {
+    double Fx = 0.0;
+    double Fy = 0.0;
+    double M = 0.0;
+    for (auto face : mesh_.immersedBoundaryFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+        double p_face = 0.5 * (pp[leftCell] + pp[rightCell]);
+        double nx = mesh_.faces[face].nx;
+        double ny = mesh_.faces[face].ny;
+        if (fluidCell != leftCell) {
+            nx = -nx;
+            ny = -ny;
+        }
+        double area = mesh_.faces[face].area;
+        double cx = mesh_.faces[face].cx;
+        double cy = mesh_.faces[face].cy;
+        Fx += p_face * nx * area;
+        Fy += p_face * ny * area;
+        M += p_face * ((0.25-cx) * ny + p_face * (cy-0.0) * nx) * area;
+    }
+    double L = Fy*std::cos(alpha_) - Fx*std::sin(alpha_);
+    double D = Fx*std::cos(alpha_) + Fy*std::sin(alpha_);
+    double q_inf = 0.5 * rhoInfty_ * Mach_*cInfty_ * Mach_*cInfty_;
+    double S = 1.0; // Reference area
+    double C_L = L / (q_inf * S);
+    double C_D = D / (q_inf * S);
+    double c = 1.0; // Reference length
+    double C_M = M / (q_inf * S * c);
+    return {C_L, C_D, C_M};
+    
+
 }

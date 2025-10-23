@@ -80,6 +80,8 @@ public:
 
     void run_even();
     void run_odd();
+
+    std::tuple<double, double, double> compute_aerodynamics_coefficients();
 };
 
 #endif // SPATIAL_DISCRETIZATION_H
