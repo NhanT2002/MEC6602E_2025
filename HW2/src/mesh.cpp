@@ -7,6 +7,8 @@
 #include <cstring>
 #include <map>
 #include <cmath>
+#include <algorithm>
+#include <numeric>
 
 // CGNS C library
 #include <cgnslib.h>
@@ -547,19 +549,25 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 
 		// find nearest 4 adjacent cell to the mirror point and store it
 		std::vector<double> dists;
-		for (int c : fluidCells) {
+		for (int c = 0; c < ncells; ++c) {
 			double dx = faces[fid].x_mirror - cx[c];
 			double dy = faces[fid].y_mirror - cy[c];
 			double dist = std::sqrt(dx*dx + dy*dy);
 			dists.push_back(dist);
 		}
 		// sort distances to find 4 nearest
-		std::vector<size_t> indices(dists.size());
-		for (size_t i = 0; i < dists.size(); ++i) indices[i] = i;
-		std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) { return dists[a] < dists[b]; });
+		std::vector<int> indices(ncells);
+		std::iota(indices.begin(), indices.end(), 0); // from <numeric>
+
+		// Sort indices based on corresponding distance
+		std::sort(indices.begin(), indices.end(),
+			[&dists](int i1, int i2) {
+				return dists[i1] < dists[i2];
+			});
+
 		faces[fid].adjacentCells.clear();
 		for (size_t k = 0; k < 4 && k < indices.size(); ++k) {
-			faces[fid].adjacentCells.push_back(fluidCells[indices[k]]);
+			faces[fid].adjacentCells.push_back(indices[k]);
 			faces[fid].adjacentDistances.push_back(dists[indices[k]]);
 		}
 	}

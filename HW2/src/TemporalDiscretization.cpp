@@ -3,6 +3,9 @@
 #include "helper.h"
 #include <iostream>
 #include <vector>
+#include <cmath>
+#include <fstream>
+#include <sstream>
 
 TemporalDiscretization::TemporalDiscretization(SpatialDiscretization &spatialDiscretization, double CFL, int it_max)
     : spatialDiscretization_(spatialDiscretization), CFL_(CFL), it_max_(it_max) {
@@ -147,6 +150,36 @@ void TemporalDiscretization::solve() {
         //               << cx << ", " << cy << ", "
         //               << u << ", " << v << "\n";
         // }
+
+        // check if input_out_filename already exists; if so, append a number to avoid overwriting
+        std::string input_out_filename = "output.cgns";
+        std::ifstream infile_check(input_out_filename);
+        if (infile_check.good()) {
+            infile_check.close();
+            std::string base_name, extension;
+            auto dot_pos = input_out_filename.find_last_of('.');
+            if (dot_pos != std::string::npos) {
+                base_name = input_out_filename.substr(0, dot_pos);
+                extension = input_out_filename.substr(dot_pos);
+            } else {
+                base_name = input_out_filename;
+                extension = "";
+            }
+            int file_index = 1;;
+            std::string new_filename;
+            do {
+                new_filename = base_name + "_" + std::to_string(file_index) + extension;
+                ++file_index;
+            } while (std::ifstream(new_filename).good());
+            std::cout << "Output file " << input_out_filename << " already exists. Using new filename: " << new_filename << std::endl;
+            input_out_filename = new_filename;
+        }
+
+        if (spatialDiscretization_.mesh_.writeToCGNSWithCellData(input_out_filename, spatialDiscretization_)) {
+            std::cerr << "Failed to write CGNS with cell data." << std::endl;
+        } else {
+            std::cout << "Wrote CGNS with cell data: " << input_out_filename << std::endl;
+        }
 
         if (res_r0 < 1e-12 || std::isnan(res_r0)) {
             break;

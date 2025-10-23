@@ -27,7 +27,7 @@ SpatialDiscretization::SpatialDiscretization(Mesh &mesh, double Mach, double alp
 }
 
 void SpatialDiscretization::initializeVariables() {
-    for (auto cell : mesh_.fluidCells) {
+    for (int cell = 0; cell < ncells_; ++cell) {
         W0[cell] = rhoInfty_;
         W1[cell] = rhoInfty_ * uInfty_;
         W2[cell] = rhoInfty_ * vInfty_;
@@ -43,7 +43,13 @@ void SpatialDiscretization::initializeVariables() {
 }
 
 void SpatialDiscretization::updateGhostCells() {
-    // std::cout << "face, ghostCell, u_mirror, v_mirror, u_ghost, v_ghost, cx, cy\n";
+    std::cout << "face, ghostCell, u_mirror, v_mirror, u_ghost, v_ghost, cx, cy\n";
+    // copy flow variables to ghost cells using immersed boundary conditions
+    std::vector<double> rho_copy = rhorho;
+    std::vector<double> u_copy = uu;
+    std::vector<double> v_copy = vv;
+    std::vector<double> E_copy = EE;
+    std::vector<double> p_copy = pp;
     for (auto face : mesh_.immersedBoundaryFaces) {
         int leftCell = mesh_.faces[face].leftCell;
         int rightCell = mesh_.faces[face].rightCell;
@@ -51,22 +57,28 @@ void SpatialDiscretization::updateGhostCells() {
         int ghostCell = (leftCellType == 0) ? leftCell : rightCell;
         double rho_mirror = 0.0, u_mirror = 0.0, v_mirror = 0.0, E_mirror = 0.0, p_mirror = 0.0;
         double total_weight = 0.0;
+        // std::cout << "Updating ghost cell " << ghostCell << " for face " << face << ":\n";
         for (size_t k = 0; k < mesh_.faces[face].adjacentCells.size(); ++k) {
             int adjCell = mesh_.faces[face].adjacentCells[k];
             double dist = mesh_.faces[face].adjacentDistances[k];
             double weight = 1.0 / dist;
-            rho_mirror += rhorho[adjCell] * weight;
-            u_mirror += uu[adjCell] * weight;
-            v_mirror += vv[adjCell] * weight;
-            E_mirror += EE[adjCell] * weight;
-            p_mirror += pp[adjCell] * weight;
+            rho_mirror += rho_copy[adjCell] * weight;
+            u_mirror += u_copy[adjCell] * weight;
+            v_mirror += v_copy[adjCell] * weight;
+            E_mirror += E_copy[adjCell] * weight;
+            p_mirror += p_copy[adjCell] * weight;
             total_weight += weight;
+            // std::cout << "  adjacent cell: " << adjCell << ", dist: " << dist << ", weight: " << weight << " used values: rho=" << rho_copy[adjCell]
+            //           << ", u=" << u_copy[adjCell] << ", v=" << v_copy[adjCell]
+            //           << ", E=" << E_copy[adjCell] << ", p=" << p_copy[adjCell] << "\n";
         }
         rho_mirror /= total_weight;
         u_mirror /= total_weight;
         v_mirror /= total_weight;
         E_mirror /= total_weight;
         p_mirror /= total_weight;
+        // std::cout << "  mirrored values before BCs: rho=" << rho_mirror << ", u=" << u_mirror 
+        //           << ", v=" << v_mirror << ", E=" << E_mirror << ", p=" << p_mirror << "\n";
 
         uu[ghostCell] = u_mirror - 2.0 * (u_mirror * mesh_.faces[face].ib_nx + v_mirror * mesh_.faces[face].ib_ny) * mesh_.faces[face].ib_nx;
         vv[ghostCell] = v_mirror - 2.0 * (u_mirror * mesh_.faces[face].ib_nx + v_mirror * mesh_.faces[face].ib_ny) * mesh_.faces[face].ib_ny;
@@ -79,9 +91,9 @@ void SpatialDiscretization::updateGhostCells() {
         W2[ghostCell] = rhorho[ghostCell] * vv[ghostCell];
         W3[ghostCell] = rhorho[ghostCell] * EE[ghostCell];
 
-        // std::cout << face << ", " << ghostCell << ", " << u_mirror << ", " << v_mirror 
-        //         << ", " << uu[ghostCell] << ", " << vv[ghostCell] 
-        //         << ", " << mesh_.cx[ghostCell] << ", " << mesh_.cy[ghostCell] << "\n";
+        std::cout << face << ", " << ghostCell << ", " << u_mirror << ", " << v_mirror 
+                << ", " << uu[ghostCell] << ", " << vv[ghostCell] 
+                << ", " << mesh_.cx[ghostCell] << ", " << mesh_.cy[ghostCell] << "\n";
     }
 }
 
@@ -128,7 +140,7 @@ void SpatialDiscretization::compute_convective_fluxes() {
         F2[face] = (avg_W2 * V + avg_p * ny) * area;
         F3[face] = (avg_W3 * V + avg_p * V) * area;
     }
-    std::cout << "face, leftCell, rightCell, cx, cy, u_ib, v_ib\n";
+    // std::cout << "face, leftCell, rightCell, cx, cy, u_ib, v_ib\n";
     for (auto face : mesh_.immersedBoundaryFaces) {
         int leftCell = mesh_.faces[face].leftCell;
         int rightCell = mesh_.faces[face].rightCell;
@@ -146,9 +158,9 @@ void SpatialDiscretization::compute_convective_fluxes() {
         double avg_E = avg_W3 / avg_W0;
         double avg_p = pressure(gamma_, avg_W0, avg_u, avg_v, avg_E);
 
-        std::cout << face << ", " << leftCell << ", " << rightCell << ", "
-                  << mesh_.faces[face].cx << ", " << mesh_.faces[face].cy << ", "
-                  << avg_u << ", " << avg_v << "\n";
+        // std::cout << face << ", " << leftCell << ", " << rightCell << ", "
+        //           << mesh_.faces[face].cx << ", " << mesh_.faces[face].cy << ", "
+        //           << avg_u << ", " << avg_v << "\n";
 
         // Compute fluxes
         double V = avg_u * nx + avg_v * ny;
