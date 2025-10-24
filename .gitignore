@@ -2,6 +2,7 @@
 *.d
 
 *.gif
+*.txt
 *.pdf
 *.cgns
 *.csv

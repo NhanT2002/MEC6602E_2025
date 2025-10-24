@@ -4,8 +4,8 @@ CXXFLAGS = -std=c++20 -Wall -Wextra -fopenmp -O3 -ftree-vectorize -march=native 
 
 # CGNS library paths (user-local install from the build)
 # We installed CGNS v4 into /home/utilisateur/CGNS_LIB_local
-CGNS_INC = -I$(HOME)CGNS_LIB_local/include
-CGNS_LIBS = -L$(HOME)CGNS_LIB_local/lib -lcgns
+CGNS_INC = -I$(HOME)/CGNS_LIB_local/include
+CGNS_LIBS = -L$(HOME)/CGNS_LIB_local/lib -lcgns
 
 # Embed runtime search path into the final binary so LD_LIBRARY_PATH is not required.
 RPATH = -Wl,-rpath,$(HOME)/CGNS_LIB_local/lib:$(HOME)/hdf5_LIB/lib
