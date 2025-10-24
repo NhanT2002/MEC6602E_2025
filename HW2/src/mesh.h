@@ -104,6 +104,30 @@ public:
 
 	std::vector<int> fluidCells; // indices of fluid cells
 	std::vector<int> ghostCells; // indices of ghost cells
+	std::vector<double> ghostCells_BI_rho;
+	std::vector<double> ghostCells_BI_u;
+	std::vector<double> ghostCells_BI_v;
+	std::vector<double> ghostCells_BI_E;
+	std::vector<double> ghostCells_BI_p;
+	std::vector<double> ghostCells_mirror_rho;
+	std::vector<double> ghostCells_mirror_u;
+	std::vector<double> ghostCells_mirror_v;
+	std::vector<double> ghostCells_mirror_E;
+	std::vector<double> ghostCells_mirror_p;
+	std::vector<std::vector<int>> adjacentCells; // use for k-least squares
+	std::vector<std::vector<double>> adjacentCellsCx; // x-coords of adjacent cells
+	std::vector<std::vector<double>> adjacentCellsCy; // y-coords of adjacent cells
+	std::vector<kExactLeastSquare> kls; // least squares object for this face
+	std::vector<double> ghostCells_ib_nx;
+	std::vector<double> ghostCells_ib_ny;
+	std::vector<double> ghostCells_ib_nz;
+	std::vector<double> ghostCells_x_mirror;
+	std::vector<double> ghostCells_y_mirror;
+	std::vector<double> ghostCells_z_mirror;
+	std::vector<double> ghostCells_x_BI;
+	std::vector<double> ghostCells_y_BI;
+	std::vector<double> ghostCells_z_BI;
+
 
 	Mesh() = default;
 

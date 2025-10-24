@@ -4,6 +4,16 @@
 #include <cmath>
 #include <Eigen/Dense>
 
+kExactLeastSquare::kExactLeastSquare()
+    : stencilCellsCx_(), stencilCellsCy_(),
+      centerCx_(0.0), centerCy_(0.0),
+      A_(Eigen::MatrixXd::Zero(3,3)),
+      value_(0.0), gradX_(0.0), gradY_(0.0),
+      x_(), y_(), c0_(), cx_(), cy_()
+{
+    // intentionally empty: default object is inert until properly initialized
+}
+
 kExactLeastSquare::kExactLeastSquare(std::vector<double> stencilCellsCx,
                                      std::vector<double> stencilCellsCy,
                                      double centerCx,
@@ -18,6 +28,13 @@ kExactLeastSquare::kExactLeastSquare(std::vector<double> stencilCellsCx,
     c0_.resize(stencilCellsCx_.size());
     cx_.resize(stencilCellsCx_.size());
     cy_.resize(stencilCellsCy_.size());
+
+    // Initialize the field values
+    rho_fieldValues_.resize(stencilCellsCx_.size());
+    u_fieldValues_.resize(stencilCellsCx_.size());
+    v_fieldValues_.resize(stencilCellsCx_.size());
+    E_fieldValues_.resize(stencilCellsCx_.size());
+    p_fieldValues_.resize(stencilCellsCx_.size());
 
     // Initialize the least squares problem
     for (size_t i = 0; i < stencilCellsCx_.size(); ++i) {

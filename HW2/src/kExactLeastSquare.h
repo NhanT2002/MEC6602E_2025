@@ -13,6 +13,13 @@ public:
     double value_;
     double gradX_;
     double gradY_;
+    std::vector<double> rho_fieldValues_;
+    std::vector<double> u_fieldValues_;
+    std::vector<double> v_fieldValues_;
+    std::vector<double> E_fieldValues_;
+    std::vector<double> p_fieldValues_;
+
+    kExactLeastSquare();
     kExactLeastSquare(std::vector<double> stencilCellsCx,
                       std::vector<double> stencilCellsCy,
                       double centerCx,

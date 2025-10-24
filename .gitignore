@@ -5,6 +5,7 @@
 *.txt
 *.pdf
 *.cgns
+*.csv
 
 */bin/
 */build/

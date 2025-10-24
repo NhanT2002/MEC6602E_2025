@@ -498,6 +498,30 @@ void Mesh::assignFaceAndCellTypes() {
 			ghostCells.push_back(c);
 		}
 	}
+
+	ghostCells_BI_rho.resize(ghostCells.size(), 0.0);
+	ghostCells_BI_u.resize(ghostCells.size(), 0.0);
+	ghostCells_BI_v.resize(ghostCells.size(), 0.0);
+	ghostCells_BI_p.resize(ghostCells.size(), 0.0);
+	ghostCells_BI_E.resize(ghostCells.size(), 0.0);
+	ghostCells_mirror_rho.resize(ghostCells.size(), 0.0);
+	ghostCells_mirror_u.resize(ghostCells.size(), 0.0);
+	ghostCells_mirror_v.resize(ghostCells.size(), 0.0);
+	ghostCells_mirror_E.resize(ghostCells.size(), 0.0);
+	ghostCells_mirror_p.resize(ghostCells.size(), 0.0);
+	adjacentCells.resize(ghostCells.size());
+	adjacentCellsCx.resize(ghostCells.size());
+	adjacentCellsCy.resize(ghostCells.size());
+	kls.resize(ghostCells.size());
+	ghostCells_ib_nx.resize(ghostCells.size(), 0.0);
+	ghostCells_ib_ny.resize(ghostCells.size(), 0.0);
+	ghostCells_ib_nz.resize(ghostCells.size(), 0.0);
+	ghostCells_x_mirror.resize(ghostCells.size(), 0.0);
+	ghostCells_y_mirror.resize(ghostCells.size(), 0.0);
+	ghostCells_z_mirror.resize(ghostCells.size(), 0.0);
+	ghostCells_x_BI.resize(ghostCells.size(), 0.0);
+	ghostCells_y_BI.resize(ghostCells.size(), 0.0);
+	ghostCells_z_BI.resize(ghostCells.size(), 0.0);
 }
 
 // compute normals for immersed-boundary faces: vector from face center to nearest point on geometry
@@ -524,6 +548,57 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 		else { cxp = ax + t*abx; cyp = ay + t*aby; }
 		double dx = px - cxp; double dy = py - cyp; return std::sqrt(dx*dx + dy*dy);
 	};
+
+	for (size_t i=0; i<ghostCells.size(); ++i) {
+		int ghostCell = ghostCells[i];
+		double ox = cx[ghostCell], oy = cy[ghostCell];
+		double min_d = std::numeric_limits<double>::infinity();
+		double best_x=ox, best_y=oy;
+		for (const auto &s : segs) {
+			double cxp, cyp;
+			double d = project_to_seg(ox, oy, s, cxp, cyp);
+			if (d < min_d) { min_d = d; best_x = cxp; best_y = cyp; }
+		}
+		double vx = best_x - ox; double vy = best_y - oy;
+		double norm = std::sqrt(vx*vx + vy*vy);
+		double nx = vx / norm;
+		double ny = vy / norm;
+		ghostCells_ib_nx[i] = nx;
+		ghostCells_ib_ny[i] = ny;
+		ghostCells_x_mirror[i] = best_x + vx;
+		ghostCells_y_mirror[i] = best_y + vy;
+		ghostCells_x_BI[i] = best_x;
+		ghostCells_y_BI[i] = best_y;
+
+		// find nearest 3 adjacent cell to the mirror point and store it
+		std::vector<double> dists;
+		for (auto c : fluidCells) {
+			double dx = ghostCells_x_mirror[i] - cx[c];
+			double dy = ghostCells_y_mirror[i] - cy[c];
+			double dist = std::sqrt(dx*dx + dy*dy);
+			dists.push_back(dist);
+		}
+		// sort distances to find 3 nearest
+		std::vector<int> indices(fluidCells.size());
+		std::iota(indices.begin(), indices.end(), 0); // from <numeric>
+		// Sort indices based on corresponding distance
+		std::sort(indices.begin(), indices.end(),
+			[&dists](int i1, int i2) {
+				return dists[i1] < dists[i2];
+			});
+		adjacentCells[i].clear();
+		adjacentCellsCx[i].clear();
+		adjacentCellsCy[i].clear();
+		for (size_t k = 0; k < 3 && k < indices.size(); ++k) {
+			int cidx = fluidCells[indices[k]];
+			adjacentCells[i].push_back(cidx);
+			adjacentCellsCx[i].push_back(cx[cidx]);
+			adjacentCellsCy[i].push_back(cy[cidx]);
+		}
+		adjacentCellsCx[i].push_back(best_x);
+		adjacentCellsCy[i].push_back(best_y);
+		kls[i] = kExactLeastSquare(adjacentCellsCx[i], adjacentCellsCy[i], ghostCells_x_mirror[i], ghostCells_y_mirror[i]);
+	}
 
 	for (int fid : immersedBoundaryFaces) {
 		int leftCell = faces[fid].leftCell;
