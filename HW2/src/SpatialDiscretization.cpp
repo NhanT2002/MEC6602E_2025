@@ -40,10 +40,18 @@ void SpatialDiscretization::initializeVariables() {
         pp[cell] = pInfty_;
     }
 
+    for (auto face : mesh_.immersedBoundaryFaces) {
+        mesh_.faces[face].rho_BI = rhoInfty_;
+        mesh_.faces[face].u_BI = uInfty_;
+        mesh_.faces[face].v_BI = vInfty_;
+        mesh_.faces[face].E_BI = EInfty_;
+        mesh_.faces[face].p_BI = pInfty_;
+    }
+
 }
 
 void SpatialDiscretization::updateGhostCells() {
-    std::cout << "face, ghostCell, u_BI, v_BI, cx, cy\n";
+    std::cout << "face, ghostCell, u_BI, v_BI, cx, cy, u_mirror, v_mirror, x_mirror, y_mirror\n";
     // copy flow variables to ghost cells using immersed boundary conditions
     std::vector<double> rho_copy = rhorho;
     std::vector<double> u_copy = uu;
@@ -55,43 +63,30 @@ void SpatialDiscretization::updateGhostCells() {
         int rightCell = mesh_.faces[face].rightCell;
         int leftCellType = mesh_.cell_types[leftCell];
         int ghostCell = (leftCellType == 0) ? leftCell : rightCell;
-        double rho_mirror = 0.0, u_mirror = 0.0, v_mirror = 0.0, E_mirror = 0.0, p_mirror = 0.0;
-        double total_weight = 0.0;
         // std::cout << "Updating ghost cell " << ghostCell << " for face " << face << ":\n";
-        for (size_t k = 0; k < mesh_.faces[face].adjacentCells.size(); ++k) {
-            int adjCell = mesh_.faces[face].adjacentCells[k];
-            int adjCellType = mesh_.cell_types[adjCell];
-            if (adjCellType == 0) {
-                double dx = mesh_.faces[face].x_mirror - mesh_.faces[face].x_BI;
-                double dy = mesh_.faces[face].y_mirror - mesh_.faces[face].y_BI;
-                double dist = std::sqrt(dx*dx + dy*dy);
-                double weight = 1.0 / dist;
-                rho_mirror += mesh_.faces[face].rho_BI * weight;
-                u_mirror += mesh_.faces[face].u_BI * weight;
-                v_mirror += mesh_.faces[face].v_BI * weight;
-                E_mirror += mesh_.faces[face].E_BI * weight;
-                p_mirror += mesh_.faces[face].p_BI * weight;
-                total_weight += weight;
-            }
-            else {
-                double dist = mesh_.faces[face].adjacentDistances[k];
-                double weight = 1.0 / dist;
-                rho_mirror += rho_copy[adjCell] * weight;
-                u_mirror += u_copy[adjCell] * weight;
-                v_mirror += v_copy[adjCell] * weight;
-                E_mirror += E_copy[adjCell] * weight;
-                p_mirror += p_copy[adjCell] * weight;
-                total_weight += weight;
-            }
             // std::cout << "  adjacent cell: " << adjCell << ", dist: " << dist << ", weight: " << weight << " used values: rho=" << rho_copy[adjCell]
             //           << ", u=" << u_copy[adjCell] << ", v=" << v_copy[adjCell]
             //           << ", E=" << E_copy[adjCell] << ", p=" << p_copy[adjCell] << "\n";
+        std::vector<double> rho_fields, u_fields, v_fields, E_fields, p_fields;
+        for (size_t idx = 0; idx < mesh_.faces[face].adjacentCells.size(); ++idx) {
+            int adjCell = mesh_.faces[face].adjacentCells[idx];
+            rho_fields.push_back(rho_copy[adjCell]);
+            u_fields.push_back(u_copy[adjCell]);
+            v_fields.push_back(v_copy[adjCell]);
+            E_fields.push_back(E_copy[adjCell]);
+            p_fields.push_back(p_copy[adjCell]);
         }
-        rho_mirror /= total_weight;
-        u_mirror /= total_weight;
-        v_mirror /= total_weight;
-        E_mirror /= total_weight;
-        p_mirror /= total_weight;
+        rho_fields.push_back(mesh_.faces[face].rho_BI);
+        u_fields.push_back(mesh_.faces[face].u_BI);
+        v_fields.push_back(mesh_.faces[face].v_BI);
+        E_fields.push_back(mesh_.faces[face].E_BI);
+        p_fields.push_back(mesh_.faces[face].p_BI);
+
+        double rho_mirror = mesh_.faces[face].kls.interpolate(rho_fields);
+        double u_mirror = mesh_.faces[face].kls.interpolate(u_fields);
+        double v_mirror = mesh_.faces[face].kls.interpolate(v_fields);
+        double E_mirror = mesh_.faces[face].kls.interpolate(E_fields);
+        double p_mirror = mesh_.faces[face].kls.interpolate(p_fields);
         // std::cout << "  mirrored values before BCs: rho=" << rho_mirror << ", u=" << u_mirror 
         //           << ", v=" << v_mirror << ", E=" << E_mirror << ", p=" << p_mirror << "\n";
 
@@ -119,7 +114,8 @@ void SpatialDiscretization::updateGhostCells() {
         mesh_.faces[face].p_BI = p_BI;
 
         std::cout << face << ", " << ghostCell << ", " << u_BI << ", " << v_BI
-                << ", " << mesh_.faces[face].x_BI << ", " << mesh_.faces[face].y_BI << "\n";
+                << ", " << mesh_.faces[face].x_BI << ", " << mesh_.faces[face].y_BI << ", "
+                << u_mirror << ", " << v_mirror << ", " << mesh_.faces[face].x_mirror << ", " << mesh_.faces[face].y_mirror << "\n";
     }
 }
 

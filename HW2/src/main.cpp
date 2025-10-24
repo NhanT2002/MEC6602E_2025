@@ -9,12 +9,11 @@
 #include <sstream>
 #include <algorithm>
 #include "parameters.h"
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
 #include "mesh.h"
 #include "helper.h"
 #include "SpatialDiscretization.h"
 #include "TemporalDiscretization.h"
+#include "kExactLeastSquare.h"
 
 std::tuple<std::string, std::string, std::string, double, double, double, double, double, int> readInputFile(const std::string& filename) {
     std::ifstream input_file(filename);

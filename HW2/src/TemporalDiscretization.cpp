@@ -152,7 +152,7 @@ void TemporalDiscretization::solve() {
         // }
 
         // check if input_out_filename already exists; if so, append a number to avoid overwriting
-        std::string input_out_filename = "output.cgns";
+        std::string input_out_filename = "output/output.cgns";
         std::ifstream infile_check(input_out_filename);
         if (infile_check.good()) {
             infile_check.close();

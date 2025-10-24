@@ -1,6 +1,7 @@
 #include "mesh.h"
 #include "helper.h"
 #include "SpatialDiscretization.h"
+#include "kExactLeastSquare.h"
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -549,15 +550,15 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 		faces[fid].x_BI = best_x;
 		faces[fid].y_BI = best_y;
 
-		// find nearest 4 adjacent cell to the mirror point and store it
+		// find nearest 3 adjacent cell to the mirror point and store it
 		std::vector<double> dists;
-		for (int c = 0; c < ncells; ++c) {
+		for (auto c : fluidCells) {
 			double dx = faces[fid].x_mirror - cx[c];
 			double dy = faces[fid].y_mirror - cy[c];
 			double dist = std::sqrt(dx*dx + dy*dy);
 			dists.push_back(dist);
 		}
-		// sort distances to find 4 nearest
+		// sort distances to find 3 nearest
 		std::vector<int> indices(ncells);
 		std::iota(indices.begin(), indices.end(), 0); // from <numeric>
 
@@ -568,10 +569,15 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 			});
 
 		faces[fid].adjacentCells.clear();
-		for (size_t k = 0; k < 4 && k < indices.size(); ++k) {
+		for (size_t k = 0; k < 3 && k < indices.size(); ++k) {
 			faces[fid].adjacentCells.push_back(indices[k]);
-			faces[fid].adjacentDistances.push_back(dists[indices[k]]);
+			faces[fid].adjacentCellsCx.push_back(cx[indices[k]]);
+			faces[fid].adjacentCellsCy.push_back(cy[indices[k]]);
 		}
+		faces[fid].adjacentCellsCx.push_back(best_x);
+		faces[fid].adjacentCellsCy.push_back(best_y);
+
+		faces[fid].kls = kExactLeastSquare(faces[fid].adjacentCellsCx, faces[fid].adjacentCellsCy, faces[fid].x_mirror, faces[fid].y_mirror);
 	}
 }
 
