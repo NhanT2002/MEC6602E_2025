@@ -27,6 +27,7 @@ public:
 
     std::vector<double> x_;
     std::vector<double> y_;
+    std::vector<double> r_;
     std::vector<double> c0_;
     std::vector<double> cx_;
     std::vector<double> cy_;

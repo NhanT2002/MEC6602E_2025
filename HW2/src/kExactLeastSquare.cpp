@@ -25,6 +25,7 @@ kExactLeastSquare::kExactLeastSquare(std::vector<double> stencilCellsCx,
 
     x_.resize(stencilCellsCx_.size());
     y_.resize(stencilCellsCy_.size());
+    r_.resize(stencilCellsCy_.size());
     c0_.resize(stencilCellsCx_.size());
     cx_.resize(stencilCellsCx_.size());
     cy_.resize(stencilCellsCy_.size());
@@ -40,27 +41,29 @@ kExactLeastSquare::kExactLeastSquare(std::vector<double> stencilCellsCx,
     for (size_t i = 0; i < stencilCellsCx_.size(); ++i) {
         double dx = stencilCellsCx_[i] - centerCx_;
         double dy = stencilCellsCy_[i] - centerCy_;
-        A_(0, 0) += 1.0;
-        A_(0, 1) += dx;
-        A_(0, 2) += dy;
-        A_(1, 0) += dx;
-        A_(1, 1) += dx * dx;
-        A_(1, 2) += dx * dy;
-        A_(2, 0) += dy;
-        A_(2, 1) += dx * dy;
-        A_(2, 2) += dy * dy;
+        double ri = 1 / std::sqrt(dx*dx + dy*dy);
+        A_(0, 0) += ri;
+        A_(0, 1) += ri * dx;
+        A_(0, 2) += ri * dy;
+        A_(1, 0) += ri * dx;
+        A_(1, 1) += ri * dx * dx;
+        A_(1, 2) += ri * dx * dy;
+        A_(2, 0) += ri * dy;
+        A_(2, 1) += ri * dx * dy;
+        A_(2, 2) += ri * dy * dy;
 
         x_[i] = dx;
         y_[i] = dy;
+        r_[i] = ri;
     }
 
     // Solve the least squares problem
     Eigen::MatrixXd A_inv = A_.inverse();
 
     for (size_t i = 0; i < stencilCellsCx_.size(); ++i) {
-        c0_[i] = A_inv(0, 0) + A_inv(0, 1) * x_[i] + A_inv(0, 2) * y_[i];
-        cx_[i] = A_inv(1, 0) + A_inv(1, 1) * x_[i] + A_inv(1, 2) * y_[i];
-        cy_[i] = A_inv(2, 0) + A_inv(2, 1) * x_[i] + A_inv(2, 2) * y_[i];
+        c0_[i] = r_[i] * (A_inv(0, 0) + A_inv(0, 1) * x_[i] + A_inv(0, 2) * y_[i]);
+        cx_[i] = r_[i] * (A_inv(1, 0) + A_inv(1, 1) * x_[i] + A_inv(1, 2) * y_[i]);
+        cy_[i] = r_[i] * (A_inv(2, 0) + A_inv(2, 1) * x_[i] + A_inv(2, 2) * y_[i]);
     }
 }
 
