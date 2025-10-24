@@ -4,20 +4,20 @@ CXXFLAGS = -std=c++20 -Wall -Wextra -fopenmp -O3 -ftree-vectorize -march=native 
 
 # CGNS library paths (user-local install from the build)
 # We installed CGNS v4 into /home/utilisateur/CGNS_LIB_local
-CGNS_INC = -I/home/utilisateur/CGNS_LIB_local/include
-CGNS_LIBS = -L/home/utilisateur/CGNS_LIB_local/lib -lcgns
+CGNS_INC = -I$(HOME)CGNS_LIB_local/include
+CGNS_LIBS = -L$(HOME)CGNS_LIB_local/lib -lcgns
 
 # Embed runtime search path into the final binary so LD_LIBRARY_PATH is not required.
-RPATH = -Wl,-rpath,/home/utilisateur/CGNS_LIB_local/lib:/home/utilisateur/hdf5_LIB/lib
+RPATH = -Wl,-rpath,$(HOME)/CGNS_LIB_local/lib:$(HOME)/hdf5_LIB/lib
 # CGNS is typically built against HDF5. Try to discover HDF5 flags via pkg-config;
 # allow user to override by setting HDF5_LIBS in the environment or the make command line.
 HDF5_LIBS ?= $(shell pkg-config --libs hdf5 2>/dev/null)
 ifeq ($(HDF5_LIBS),)
 # Fallback to the HDF5 library location provided by the user environment.
-# If your HDF5 is installed in /home/utilisateur/hdf5_LIB set this path; otherwise
+# If your HDF5 is installed in $(HOME)/hdf5_LIB set this path; otherwise
 # you can override HDF5_LIBS on the make command line, e.g.
 # make HDF5_LIBS='-L/path/to/hdf5/lib -lhdf5 -lhdf5_hl'
-HDF5_LIBS := -L/home/utilisateur/hdf5_LIB/lib -lhdf5 -lhdf5_hl
+HDF5_LIBS := -L$(HOME)/hdf5_LIB/lib -lhdf5 -lhdf5_hl
 endif
 
 # Force English output for all commands
