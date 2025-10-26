@@ -17,7 +17,7 @@ def data(filename) :
 
     return X, Y, rho, u, v, p, E, Cp
 
-X, Y, rho, u, v, p, E, Cp = data('../output/output_39.cgns')
+X, Y, rho, u, v, p, E, Cp = data('../output/output_99.cgns')
 plt.figure()
 plt.xlim(0.0, 1.0)
 plt.plot(X, Cp, "o")
