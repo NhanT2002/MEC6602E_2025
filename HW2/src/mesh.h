@@ -42,33 +42,6 @@ public:
 		double area = 0; // face area (length in 2D)
 		bool isBoundary = false;
 		bool isImmersedBoundary = false;
-		// immersed boundary normal (points from face center to nearest body point)
-		double ib_nx = 0, ib_ny = 0, ib_nz = 0;
-		double x_mirror = 0, y_mirror = 0, z_mirror = 0; // mirror point coordinates for IB faces
-		double x_BI = 0, y_BI = 0, z_BI = 0; // body intersection point coordinates for IB faces
-		double rho_BI = 0; // pressure at body intersection point for IB faces
-		double u_BI = 0;   // velocity u at body intersection point for IB faces
-		double v_BI = 0;   // velocity v at body intersection point for IB faces
-		double w_BI = 0;   // velocity w at body intersection point for IB faces
-		double E_BI = 0;   // energy at body intersection point for IB faces
-		double p_BI = 0;   // pressure at body intersection point for IB faces
-		std::vector<int> adjacentCells; // use for k-least squares
-		std::vector<double> adjacentCellsCx; // x-coords of adjacent cells
-		std::vector<double> adjacentCellsCy; // y-coords of adjacent cells
-		kExactLeastSquare kls; // least squares object for this face
-
-		// default constructor to initialize kls (kExactLeastSquare has no default ctor)
-        Face()
-            : n1(-1), n2(-1), leftCell(-1), rightCell(-1),
-              cx(0), cy(0), cz(0), nx(0), ny(0), nz(0), area(0),
-              isBoundary(false), isImmersedBoundary(false),
-              ib_nx(0), ib_ny(0), ib_nz(0),
-              x_mirror(0), y_mirror(0), z_mirror(0),
-              x_BI(0), y_BI(0), z_BI(0),
-              rho_BI(0), u_BI(0), v_BI(0), w_BI(0), E_BI(0), p_BI(0),
-              adjacentCells(), adjacentCellsCx(), adjacentCellsCy(),
-              kls(std::vector<double>{}, std::vector<double>{}, 0.0, 0.0)
-        {}
 	};
 
 	std::vector<Face> faces; // all unique faces

@@ -1,10 +1,10 @@
-mesh_filename = pre/cartesian_mesh.cgns
+mesh_filename = pre/cartesian_mesh_fine.cgns
 geometry_filename = pre/naca0012_geom.cgns
-output_filename = out.cgns
-Mach = 0.5
-alpha = 0.0
+output_filename = output/output.cgns
+Mach = 0.8
+alpha = 1.25
 k2 = 0.5
 k4 = 0.015625
 
-CFL = 0.1
-it_max = 100
+CFL = 3.6
+it_max = 10000

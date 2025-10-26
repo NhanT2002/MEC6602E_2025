@@ -599,61 +599,6 @@ void Mesh::computeImmersedBoundaryNormals(const std::vector<double>& geom_x, con
 		adjacentCellsCy[i].push_back(best_y);
 		kls[i] = kExactLeastSquare(adjacentCellsCx[i], adjacentCellsCy[i], ghostCells_x_mirror[i], ghostCells_y_mirror[i]);
 	}
-
-	for (int fid : immersedBoundaryFaces) {
-		int leftCell = faces[fid].leftCell;
-		int rightCell = faces[fid].rightCell;
-		int leftCellType = cell_types[leftCell];
-		int ghostCell = (leftCellType != 1) ? leftCell : rightCell;
-		double ox = cx[ghostCell], oy = cy[ghostCell];
-		double min_d = std::numeric_limits<double>::infinity();
-		double best_x=ox, best_y=oy;
-		for (const auto &s : segs) {
-			double cxp, cyp;
-			double d = project_to_seg(ox, oy, s, cxp, cyp);
-			if (d < min_d) { min_d = d; best_x = cxp; best_y = cyp; }
-		}
-		double vx = best_x - ox; double vy = best_y - oy;
-		double norm = std::sqrt(vx*vx + vy*vy);
-		double nx = vx / norm;
-		double ny = vy / norm;
-
-		faces[fid].ib_nx = nx;
-		faces[fid].ib_ny = ny;
-		faces[fid].x_mirror = best_x + vx;
-		faces[fid].y_mirror = best_y + vy;
-		faces[fid].x_BI = best_x;
-		faces[fid].y_BI = best_y;
-
-		// find nearest 3 adjacent cell to the mirror point and store it
-		std::vector<double> dists;
-		for (auto c : fluidCells) {
-			double dx = faces[fid].x_mirror - cx[c];
-			double dy = faces[fid].y_mirror - cy[c];
-			double dist = std::sqrt(dx*dx + dy*dy);
-			dists.push_back(dist);
-		}
-		// sort distances to find 3 nearest
-		std::vector<int> indices(ncells);
-		std::iota(indices.begin(), indices.end(), 0); // from <numeric>
-
-		// Sort indices based on corresponding distance
-		std::sort(indices.begin(), indices.end(),
-			[&dists](int i1, int i2) {
-				return dists[i1] < dists[i2];
-			});
-
-		faces[fid].adjacentCells.clear();
-		for (size_t k = 0; k < 3 && k < indices.size(); ++k) {
-			faces[fid].adjacentCells.push_back(indices[k]);
-			faces[fid].adjacentCellsCx.push_back(cx[indices[k]]);
-			faces[fid].adjacentCellsCy.push_back(cy[indices[k]]);
-		}
-		faces[fid].adjacentCellsCx.push_back(best_x);
-		faces[fid].adjacentCellsCy.push_back(best_y);
-
-		faces[fid].kls = kExactLeastSquare(faces[fid].adjacentCellsCx, faces[fid].adjacentCellsCy, faces[fid].x_mirror, faces[fid].y_mirror);
-	}
 }
 
 bool Mesh::writeToCGNS(const std::string& filename) {
@@ -915,63 +860,63 @@ bool Mesh::writeToCGNSWithCellData(const std::string& filename, const SpatialDis
 		writeField("cell_types", ct_double.data(), ct_double.size());
 	}
 
-	// write wall solution
-	std::vector<double> x_wall;
-	std::vector<double> y_wall;
-	std::vector<double> z_wall;
-	std::vector<double> rho_wall;
-	std::vector<double> u_wall;
-	std::vector<double> v_wall;
-	std::vector<double> p_wall;
-	std::vector<double> EB_wall;
-	for (auto face : immersedBoundaryFaces) {
-		double xB = faces[face].x_BI;
-		double yB = faces[face].y_BI;
-		double zB = faces[face].z_BI;
-		double rhoB = faces[face].rho_BI;
-		double uB = faces[face].u_BI;
-		double vB = faces[face].v_BI;
-		double pB = faces[face].p_BI;
-		double EB = faces[face].E_BI;
-		x_wall.push_back(xB);
-		y_wall.push_back(yB);
-		z_wall.push_back(zB);
-		rho_wall.push_back(rhoB);
-		u_wall.push_back(uB);
-		v_wall.push_back(vB);
-		p_wall.push_back(pB);
-		EB_wall.push_back(EB);
-	}
-	// create new node for wall solution
-	int sol_wall = 0;
-	ier = cg_sol_write(file_index, base, zone, "WallData", CGNS_ENUMV(Vertex), &sol_wall);
-	if (ier != CG_OK) {
-		std::cerr << "cg_sol_write WallData failed: " << cg_get_error() << std::endl;
-		cg_close(file_index);
-		return false;
-	}
-	// write wall fields
-	auto writeWallField = [&](const char* name, const double* data, size_t n)->void {
-		if (!data) return;
-		if ((size_t)n != immersedBoundaryFaces.size()) {
-			std::cerr << "Warning: field '" << name << "' size mismatch (expected " << immersedBoundaryFaces.size() << ")\n";
-			return;
-		}
-		int field_index = 0;
-		int ret = cg_field_write(file_index, base, zone, sol_wall, CGNS_ENUMV(RealDouble), name, (void*)data, &field_index);
-		if (ret != CG_OK) {
+	// create new zone for wall data (only if we have ghost cells)
+	if (!ghostCells.empty()) {
+		int wall_zone = 0;
+		// For a 2D structured-style 6-element sizes array the layout is:
+		//  { VertexSizeI, VertexSizeJ, CellSizeI, CellSizeJ, BndSizeI, BndSizeJ }
+		// Ensure VertexSizeI >= CellSizeI + 1 (structured grid requirement).
+		int nWall = (int)ghostCells.size();
+	// Ensure each VertexSize[d] >= CellSize[d] + 1. For the "single-row" structured wall zone
+	// we set the J dimension to vertex=2, cell=1 and the I dimension to vertex=nWall+1, cell=nWall.
+	cgsize_t wall_zone_size6[6] = { (cgsize_t)std::max(1, nWall + 1), (cgsize_t)2, (cgsize_t)std::max(0, nWall), (cgsize_t)1, (cgsize_t)0, (cgsize_t)0 };
+		ier = cg_zone_write(file_index, base, "WallZone", wall_zone_size6, CGNS_ENUMV(Structured), &wall_zone);
+		if (ier != CG_OK) {
 			const char* msg = cg_get_error();
-			std::cerr << "cg_field_write Wall " << name << " failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
+			if (msg && std::strlen(msg) > 0) std::cerr << "cg_zone_write WallZone failed: " << msg << std::endl;
+			else std::cerr << "cg_zone_write WallZone failed with code " << ier << std::endl;
+			cg_close(file_index);
+			return false;
 		}
-	};
-	if (!x_wall.empty()) writeWallField("CoordinateX", x_wall.data(), x_wall.size());
-	if (!y_wall.empty()) writeWallField("CoordinateY", y_wall.data(), y_wall.size());
-	if (!z_wall.empty()) writeWallField("CoordinateZ", z_wall.data(), z_wall.size());
-	if (!rho_wall.empty()) writeWallField("rho", rho_wall.data(), rho_wall.size());
-	if (!u_wall.empty()) writeWallField("u", u_wall.data(), u_wall.size());
-	if (!v_wall.empty()) writeWallField("v", v_wall.data(), v_wall.size());
-	if (!p_wall.empty()) writeWallField("p", p_wall.data(), p_wall.size());
-	if (!EB_wall.empty()) writeWallField("E", EB_wall.data(), EB_wall.size());
+
+		// Create a solution node at wall cell centers and write wall cell-centered fields
+		int wall_sol = 0;
+		ier = cg_sol_write(file_index, base, wall_zone, "WallCellData", CGNS_ENUMV(CellCenter), &wall_sol);
+		if (ier != CG_OK) {
+			std::cerr << "cg_sol_write WallCellData failed: " << cg_get_error() << std::endl;
+			cg_close(file_index);
+			return false;
+		}
+		// Utility lambda to write a wall field if data exists and has correct size
+		auto writeWallField = [&](const char* name, const double* data, size_t n)->void {
+			if (!data) return;
+			if ((int)n != (int)ghostCells.size()) {
+				std::cerr << "Warning: wall field '" << name << "' size mismatch (expected " << ghostCells.size() << ")\n";
+				return;
+			}
+			int field_index = 0;
+			int ret = cg_field_write(file_index, base, wall_zone, wall_sol, CGNS_ENUMV(RealDouble), name, (void*)data, &field_index);
+			if (ret != CG_OK) {
+				const char* msg = cg_get_error();
+				std::cerr << "cg_field_write wall " << name << " failed (ret=" << ret << "): " << (msg?msg:"(no message)") << std::endl;
+			}
+		};
+		std::vector<double> pressure_coeff(ghostCells.size(), 0.0);
+		for (size_t i=0;i<ghostCells.size();++i) {
+			double p = ghostCells_BI_p[i];
+			pressure_coeff[i] = (p - discretization.pInfty_) / (0.5 * discretization.rhoInfty_ * (discretization.uInfty_ * discretization.uInfty_ + discretization.vInfty_ * discretization.vInfty_));
+		}
+		// write wall ghost cell data
+		if (!ghostCells_x_BI.empty()) writeWallField("CoordinateX", ghostCells_x_BI.data(), ghostCells_x_BI.size());
+		if (!ghostCells_y_BI.empty()) writeWallField("CoordinateY", ghostCells_y_BI.data(), ghostCells_y_BI.size());
+		if (!ghostCells_z_BI.empty()) writeWallField("CoordinateZ", ghostCells_z_BI.data(), ghostCells_z_BI.size());
+		if (!ghostCells_BI_rho.empty()) writeWallField("rho", ghostCells_BI_rho.data(), ghostCells_BI_rho.size());
+		if (!ghostCells_BI_u.empty()) writeWallField("u", ghostCells_BI_u.data(), ghostCells_BI_u.size());
+		if (!ghostCells_BI_v.empty()) writeWallField("v", ghostCells_BI_v.data(), ghostCells_BI_v.size());
+		if (!ghostCells_BI_p.empty()) writeWallField("p", ghostCells_BI_p.data(), ghostCells_BI_p.size());
+		if (!ghostCells_BI_E.empty()) writeWallField("E", ghostCells_BI_E.data(), ghostCells_BI_E.size());
+		if (!pressure_coeff.empty()) writeWallField("Cp", pressure_coeff.data(), pressure_coeff.size());
+	}
 
 	// close file
 	ier = cg_close(file_index);

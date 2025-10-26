@@ -115,7 +115,7 @@ void TemporalDiscretization::solve() {
     spatialDiscretization_.run_odd();
     for (int it = 0; it < it_max_; ++it) {
         compute_dt();
-        eulerStep();
+        RungeKuttaStep();
         auto [cl, cd, cm] = spatialDiscretization_.compute_aerodynamics_coefficients();
         std::vector<double> R0(spatialDiscretization_.Rc0.size());
         std::vector<double> R1(spatialDiscretization_.Rc1.size());
@@ -128,57 +128,65 @@ void TemporalDiscretization::solve() {
             R3[cell] = spatialDiscretization_.Rc3[cell] - spatialDiscretization_.Rd3[cell];
         }
 
+        std::vector<double> R0_wall;
+        for (size_t i=0;i<spatialDiscretization_.mesh_.ghostCells.size();++i) {
+            for (auto cell : spatialDiscretization_.mesh_.adjacentCells[i]) {
+                R0_wall.push_back(R0[cell]);
+            }
+        }
+
+        std::vector<double> R0_farfield;
+        for (auto face : spatialDiscretization_.mesh_.farfieldFaces) {
+            int leftCell = spatialDiscretization_.mesh_.faces[face].leftCell;
+            int rightCell = spatialDiscretization_.mesh_.faces[face].rightCell;
+            int leftCellType = spatialDiscretization_.mesh_.cell_types[leftCell];
+            int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+            R0_farfield.push_back(R0[fluidCell]);
+        }
+
         double res_r0 = l2Norm(R0);
         double res_r1 = l2Norm(R1);
         double res_r2 = l2Norm(R2);
         double res_r3 = l2Norm(R3);
+        double res_r0_wall = l2Norm(R0_wall);
+        double res_r0_farfield = l2Norm(R0_farfield);
 
         std::cout << "Iteration " << it+1 << ": "
                   << " R0 = " << res_r0 << ", R1 = " << res_r1 << ", R2 = " << res_r2 << ", R3 = " << res_r3
-                  << ", cl = " << cl << ", cd = " << cd << ", cm = " << cm << std::endl;
-        // std::cout << "face, leftCell, rightCell, cx, cy, u_ib, v_ib\n";
-        // for (auto face : spatialDiscretization_.mesh_.immersedBoundaryFaces) {
-        //     const auto& F = spatialDiscretization_.mesh_.faces[face];
-        //     int leftCell = F.leftCell;
-        //     int rightCell = F.rightCell;
-        //     int fluidCell = (spatialDiscretization_.mesh_.cell_types[leftCell] == 1) ? leftCell : rightCell;
-        //     double u = spatialDiscretization_.uu[fluidCell];
-        //     double v = spatialDiscretization_.vv[fluidCell];
-        //     double cx = spatialDiscretization_.mesh_.cx[fluidCell];
-        //     double cy = spatialDiscretization_.mesh_.cy[fluidCell];
-        //     std::cout << face << ", " << leftCell << ", " << rightCell << ", "
-        //               << cx << ", " << cy << ", "
-        //               << u << ", " << v << "\n";
-        // }
+                  << ", cl = " << cl << ", cd = " << cd << ", cm = " << cm << ", R0_wall = " << res_r0_wall << ", R0_farfield = " << res_r0_farfield << "\n";
+        // std::cout << "Rc0[135] = " << spatialDiscretization_.Rc0[135] << " Rc0[18495] = " << spatialDiscretization_.Rc0[18495] << "\n";
+        // std::cout << "Rd0[135] = " << spatialDiscretization_.Rd0[135] << " Rd0[18495] = " << spatialDiscretization_.Rd0[18495] << "\n";
 
-        // check if input_out_filename already exists; if so, append a number to avoid overwriting
-        std::string input_out_filename = "output/output.cgns";
-        std::ifstream infile_check(input_out_filename);
-        if (infile_check.good()) {
-            infile_check.close();
-            std::string base_name, extension;
-            auto dot_pos = input_out_filename.find_last_of('.');
-            if (dot_pos != std::string::npos) {
-                base_name = input_out_filename.substr(0, dot_pos);
-                extension = input_out_filename.substr(dot_pos);
-            } else {
-                base_name = input_out_filename;
-                extension = "";
+        if ((it + 1) % 250 == 0) {
+            // check if input_out_filename already exists; if so, append a number to avoid overwriting
+            std::string input_out_filename = "output/output.cgns";
+            std::ifstream infile_check(input_out_filename);
+            if (infile_check.good()) {
+                infile_check.close();
+                std::string base_name, extension;
+                auto dot_pos = input_out_filename.find_last_of('.');
+                if (dot_pos != std::string::npos) {
+                    base_name = input_out_filename.substr(0, dot_pos);
+                    extension = input_out_filename.substr(dot_pos);
+                } else {
+                    base_name = input_out_filename;
+                    extension = "";
+                }
+                int file_index = 1;;
+                std::string new_filename;
+                do {
+                    new_filename = base_name + "_" + std::to_string(file_index) + extension;
+                    ++file_index;
+                } while (std::ifstream(new_filename).good());
+                std::cout << "Output file " << input_out_filename << " already exists. Using new filename: " << new_filename << std::endl;
+                input_out_filename = new_filename;
             }
-            int file_index = 1;;
-            std::string new_filename;
-            do {
-                new_filename = base_name + "_" + std::to_string(file_index) + extension;
-                ++file_index;
-            } while (std::ifstream(new_filename).good());
-            std::cout << "Output file " << input_out_filename << " already exists. Using new filename: " << new_filename << std::endl;
-            input_out_filename = new_filename;
-        }
 
-        if (spatialDiscretization_.mesh_.writeToCGNSWithCellData(input_out_filename, spatialDiscretization_)) {
-            std::cerr << "Failed to write CGNS with cell data." << std::endl;
-        } else {
-            std::cout << "Wrote CGNS with cell data: " << input_out_filename << std::endl;
+            if (spatialDiscretization_.mesh_.writeToCGNSWithCellData(input_out_filename, spatialDiscretization_)) {
+                std::cerr << "Failed to write CGNS with cell data." << std::endl;
+            } else {
+                std::cout << "Wrote CGNS with cell data: " << input_out_filename << std::endl;
+            }
         }
 
         if (res_r0 < 1e-12 || std::isnan(res_r0)) {

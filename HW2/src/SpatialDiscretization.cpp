@@ -92,24 +92,24 @@ void SpatialDiscretization::updateGhostCells() {
         mesh_.ghostCells_mirror_E[i] = E_mirror;
         mesh_.ghostCells_mirror_p[i] = p_mirror;
     }
-    // print debug info in a txt.csv file
-    std::string filename = "wall.csv";
-    // check if file exists
-    std::ifstream infile_check(filename);
-    // if it exist, add _1, _2, etc. to the filename
-    if (infile_check.good()) {
-        int fileIndex = 1;
-        std::string newFilename;
-        do {
-            newFilename = "wall_" + std::to_string(fileIndex) + ".csv";
-            infile_check.close();
-            infile_check.open(newFilename);
-            fileIndex++;
-        } while (infile_check.good());
-        filename = newFilename;
-    }
-    std::ofstream outfile(filename);
-    outfile << "Cell, cx, cy, u, v\n";
+    // // print debug info in a txt.csv file
+    // std::string filename = "debug/wall.csv";
+    // // check if file exists
+    // std::ifstream infile_check(filename);
+    // // if it exist, add _1, _2, etc. to the filename
+    // if (infile_check.good()) {
+    //     int fileIndex = 1;
+    //     std::string newFilename;
+    //     do {
+    //         newFilename = "debug/wall_" + std::to_string(fileIndex) + ".csv";
+    //         infile_check.close();
+    //         infile_check.open(newFilename);
+    //         fileIndex++;
+    //     } while (infile_check.good());
+    //     filename = newFilename;
+    // }
+    // std::ofstream outfile(filename);
+    // outfile << "Cell, cx, cy, u, v\n";
     for (size_t i = 0; i < mesh_.ghostCells.size(); ++i) {
         int ghostCell = mesh_.ghostCells[i];
         mesh_.ghostCells_BI_rho[i] = 0.5*(mesh_.ghostCells_mirror_rho[i] + rhorho[ghostCell]);
@@ -117,82 +117,15 @@ void SpatialDiscretization::updateGhostCells() {
         mesh_.ghostCells_BI_v[i] = 0.5*(mesh_.ghostCells_mirror_v[i] + vv[ghostCell]);
         mesh_.ghostCells_BI_E[i] = 0.5*(mesh_.ghostCells_mirror_E[i] + EE[ghostCell]);
         mesh_.ghostCells_BI_p[i] = 0.5*(mesh_.ghostCells_mirror_p[i] + pp[ghostCell]);
-        outfile << ghostCell << ", " << mesh_.ghostCells_x_BI[i] << ", " << mesh_.ghostCells_y_BI[i] << ", "
-                << mesh_.ghostCells_BI_u[i] << ", " << mesh_.ghostCells_BI_v[i] << "\n";
-        for (auto cell : mesh_.adjacentCells[i]) {
-            outfile << cell << ", " << mesh_.cx[cell] << ", " << mesh_.cy[cell] << ", "
-                    << uu[cell] << ", " << vv[cell] << "\n";
-        }
-        outfile << ghostCell << ", " << mesh_.ghostCells_x_mirror[i] << ", " << mesh_.ghostCells_y_mirror[i] << ", "
-                << mesh_.ghostCells_mirror_u[i] << ", " << mesh_.ghostCells_mirror_v[i] << "\n";
+        // outfile << ghostCell << ", " << mesh_.ghostCells_x_BI[i] << ", " << mesh_.ghostCells_y_BI[i] << ", "
+        //         << mesh_.ghostCells_BI_u[i] << ", " << mesh_.ghostCells_BI_v[i] << "\n";
+        // for (auto cell : mesh_.adjacentCells[i]) {
+        //     outfile << cell << ", " << mesh_.cx[cell] << ", " << mesh_.cy[cell] << ", "
+        //             << uu[cell] << ", " << vv[cell] << "\n";
+        // }
+        // outfile << ghostCell << ", " << mesh_.ghostCells_x_mirror[i] << ", " << mesh_.ghostCells_y_mirror[i] << ", "
+        //         << mesh_.ghostCells_mirror_u[i] << ", " << mesh_.ghostCells_mirror_v[i] << "\n";
     }
-
-    // std::cout << "face, ghostCell, u_BI, v_BI, cx, cy, u_mirror, v_mirror, x_mirror, y_mirror\n";
-    // // copy flow variables to ghost cells using immersed boundary conditions
-    // std::vector<double> rho_copy = rhorho;
-    // std::vector<double> u_copy = uu;
-    // std::vector<double> v_copy = vv;
-    // std::vector<double> E_copy = EE;
-    // std::vector<double> p_copy = pp;
-    // for (auto face : mesh_.immersedBoundaryFaces) {
-    //     int leftCell = mesh_.faces[face].leftCell;
-    //     int rightCell = mesh_.faces[face].rightCell;
-    //     int leftCellType = mesh_.cell_types[leftCell];
-    //     int ghostCell = (leftCellType == 0) ? leftCell : rightCell;
-    //     // std::cout << "Updating ghost cell " << ghostCell << " for face " << face << ":\n";
-    //         // std::cout << "  adjacent cell: " << adjCell << ", dist: " << dist << ", weight: " << weight << " used values: rho=" << rho_copy[adjCell]
-    //         //           << ", u=" << u_copy[adjCell] << ", v=" << v_copy[adjCell]
-    //         //           << ", E=" << E_copy[adjCell] << ", p=" << p_copy[adjCell] << "\n";
-    //     std::vector<double> rho_fields, u_fields, v_fields, E_fields, p_fields;
-    //     for (size_t idx = 0; idx < mesh_.faces[face].adjacentCells.size(); ++idx) {
-    //         int adjCell = mesh_.faces[face].adjacentCells[idx];
-    //         rho_fields.push_back(rho_copy[adjCell]);
-    //         u_fields.push_back(u_copy[adjCell]);
-    //         v_fields.push_back(v_copy[adjCell]);
-    //         E_fields.push_back(E_copy[adjCell]);
-    //         p_fields.push_back(p_copy[adjCell]);
-    //     }
-    //     rho_fields.push_back(mesh_.faces[face].rho_BI);
-    //     u_fields.push_back(mesh_.faces[face].u_BI);
-    //     v_fields.push_back(mesh_.faces[face].v_BI);
-    //     E_fields.push_back(mesh_.faces[face].E_BI);
-    //     p_fields.push_back(mesh_.faces[face].p_BI);
-
-    //     double rho_mirror = mesh_.faces[face].kls.interpolate(rho_fields);
-    //     double u_mirror = mesh_.faces[face].kls.interpolate(u_fields);
-    //     double v_mirror = mesh_.faces[face].kls.interpolate(v_fields);
-    //     double E_mirror = mesh_.faces[face].kls.interpolate(E_fields);
-    //     double p_mirror = mesh_.faces[face].kls.interpolate(p_fields);
-    //     // std::cout << "  mirrored values before BCs: rho=" << rho_mirror << ", u=" << u_mirror 
-    //     //           << ", v=" << v_mirror << ", E=" << E_mirror << ", p=" << p_mirror << "\n";
-
-    //     uu[ghostCell] = u_mirror - 2.0 * (u_mirror * mesh_.faces[face].ib_nx + v_mirror * mesh_.faces[face].ib_ny) * mesh_.faces[face].ib_nx;
-    //     vv[ghostCell] = v_mirror - 2.0 * (u_mirror * mesh_.faces[face].ib_nx + v_mirror * mesh_.faces[face].ib_ny) * mesh_.faces[face].ib_ny;
-    //     rhorho[ghostCell] = rho_mirror;
-    //     pp[ghostCell] = p_mirror;
-    //     EE[ghostCell] = p_mirror / ((gamma_ - 1.0) * rho_mirror) + 0.5 * (uu[ghostCell] * uu[ghostCell] + vv[ghostCell] * vv[ghostCell]);
-        
-    //     W0[ghostCell] = rhorho[ghostCell];
-    //     W1[ghostCell] = rhorho[ghostCell] * uu[ghostCell];
-    //     W2[ghostCell] = rhorho[ghostCell] * vv[ghostCell];
-    //     W3[ghostCell] = rhorho[ghostCell] * EE[ghostCell];
-
-    //     double rho_BI = 0.5*(rho_mirror + rhorho[ghostCell]);
-    //     double u_BI = 0.5*(u_mirror + uu[ghostCell]);
-    //     double v_BI = 0.5*(v_mirror + vv[ghostCell]);
-    //     double E_BI = 0.5*(E_mirror + EE[ghostCell]);
-    //     double p_BI = 0.5*(p_mirror + pp[ghostCell]);
-
-    //     mesh_.faces[face].rho_BI = rho_BI;
-    //     mesh_.faces[face].u_BI = u_BI;
-    //     mesh_.faces[face].v_BI = v_BI;
-    //     mesh_.faces[face].E_BI = E_BI;
-    //     mesh_.faces[face].p_BI = p_BI;
-
-    //     std::cout << face << ", " << ghostCell << ", " << u_BI << ", " << v_BI
-    //             << ", " << mesh_.faces[face].x_BI << ", " << mesh_.faces[face].y_BI << ", "
-    //             << u_mirror << ", " << v_mirror << ", " << mesh_.faces[face].x_mirror << ", " << mesh_.faces[face].y_mirror << "\n";
-    // }
 }
 
 std::tuple<double, double, double, double> SpatialDiscretization::compute_conservative_fluxes_IB(int fluidCell, int fluidCell_p1, int fluidCell_p2, 
@@ -221,22 +154,51 @@ void SpatialDiscretization::compute_convective_fluxes() {
         double ny = mesh_.faces[face].ny;
         double area = mesh_.faces[face].area;
 
-        double avg_W0 = 0.5 * (W0[leftCell] + W0[rightCell]);
-        double avg_W1 = 0.5 * (W1[leftCell] + W1[rightCell]);
-        double avg_W2 = 0.5 * (W2[leftCell] + W2[rightCell]);
-        double avg_W3 = 0.5 * (W3[leftCell] + W3[rightCell]);
+        double rho_L = W0[leftCell];
+        double u_L = W1[leftCell] / W0[leftCell];
+        double v_L = W2[leftCell] / W0[leftCell];
+        double E_L = W3[leftCell] / W0[leftCell];
+        double p_L = pressure(gamma_, rho_L, u_L, v_L, E_L);
+        double V_L = u_L * nx + v_L * ny;
 
-        double avg_u = avg_W1 / avg_W0;
-        double avg_v = avg_W2 / avg_W0;
-        double avg_E = avg_W3 / avg_W0;
-        double avg_p = pressure(gamma_, avg_W0, avg_u, avg_v, avg_E);
+        double rho_R = W0[rightCell];
+        double u_R = W1[rightCell] / W0[rightCell];
+        double v_R = W2[rightCell] / W0[rightCell];
+        double E_R = W3[rightCell] / W0[rightCell];
+        double p_R = pressure(gamma_, rho_R, u_R, v_R, E_R);
+        double V_R = u_R * nx + v_R * ny;
 
-        // Compute fluxes
-        double V = avg_u * nx + avg_v * ny;
-        F0[face] = avg_W0 * V * area;
-        F1[face] = (avg_W1 * V + avg_p * nx) * area;
-        F2[face] = (avg_W2 * V + avg_p * ny) * area;
-        F3[face] = (avg_W3 * V + avg_p * V) * area;
+        double F0_L = W0[leftCell] * V_L * area;
+        double F1_L = (W1[leftCell] * V_L + p_L * nx) * area;
+        double F2_L = (W2[leftCell] * V_L + p_L * ny) * area;
+        double F3_L = (W3[leftCell] * V_L + p_L * V_L) * area;
+
+        double F0_R = W0[rightCell] * V_R * area;
+        double F1_R = (W1[rightCell] * V_R + p_R * nx) * area;
+        double F2_R = (W2[rightCell] * V_R + p_R * ny) * area;
+        double F3_R = (W3[rightCell] * V_R + p_R * V_R) * area;
+
+        F0[face] = 0.5 * (F0_L + F0_R);
+        F1[face] = 0.5 * (F1_L + F1_R);
+        F2[face] = 0.5 * (F2_L + F2_R);
+        F3[face] = 0.5 * (F3_L + F3_R);
+
+        // double avg_W0 = 0.5 * (W0[leftCell] + W0[rightCell]);
+        // double avg_W1 = 0.5 * (W1[leftCell] + W1[rightCell]);
+        // double avg_W2 = 0.5 * (W2[leftCell] + W2[rightCell]);
+        // double avg_W3 = 0.5 * (W3[leftCell] + W3[rightCell]);
+
+        // double avg_u = avg_W1 / avg_W0;
+        // double avg_v = avg_W2 / avg_W0;
+        // double avg_E = avg_W3 / avg_W0;
+        // double avg_p = pressure(gamma_, avg_W0, avg_u, avg_v, avg_E);
+
+        // // Compute fluxes
+        // double V = avg_u * nx + avg_v * ny;
+        // F0[face] = avg_W0 * V * area;
+        // F1[face] = (avg_W1 * V + avg_p * nx) * area;
+        // F2[face] = (avg_W2 * V + avg_p * ny) * area;
+        // F3[face] = (avg_W3 * V + avg_p * V) * area;
     }
     // std::cout << "face, leftCell, rightCell, cx, cy, u_ib, v_ib\n";
     for (auto face : mesh_.immersedBoundaryFaces) {
@@ -280,10 +242,11 @@ void SpatialDiscretization::compute_convective_fluxes() {
         if (machNumber >=1.0) {
             if (uu[fluidCell]*nx + vv[fluidCell]*ny >= 0) {
                 // outflow
-                double avg_W0 = W0[leftCell];
-                double avg_W1 = W1[leftCell];
-                double avg_W2 = W2[leftCell];
-                double avg_W3 = W3[leftCell];
+                
+                double avg_W0 = W0[fluidCell];
+                double avg_W1 = W1[fluidCell];
+                double avg_W2 = W2[fluidCell];
+                double avg_W3 = W3[fluidCell];
 
                 double avg_u = avg_W1 / avg_W0;
                 double avg_v = avg_W2 / avg_W0;
@@ -652,6 +615,10 @@ std::tuple<double, double> SpatialDiscretization::epsilon(double p_Im1, double p
 }
 
 void SpatialDiscretization::compute_convective_residuals() {
+    Rc0.assign(Rc0.size(), 0.0);
+    Rc1.assign(Rc1.size(), 0.0);
+    Rc2.assign(Rc2.size(), 0.0);
+    Rc3.assign(Rc3.size(), 0.0);
     for (auto face : mesh_.fluidFaces) {
         int leftCell = mesh_.faces[face].leftCell;
         int rightCell = mesh_.faces[face].rightCell;
@@ -708,9 +675,28 @@ void SpatialDiscretization::compute_convective_residuals() {
             Rc3[fluidCell] -= F3[face];
         }
     }
+
+    // std::vector<int> testCells = {135, 18495};
+    // for (auto cell : testCells) {
+    //     std::cout << "Cell: " << cell << " uu = " << uu[cell] << " vv = " << vv[cell] << " pp = " << pp[cell] << " Rc0 = " << Rc0[cell] << std::endl;
+    //     for (auto face : mesh_.cell_faces[cell]) {
+    //         int leftCell = mesh_.faces[face].leftCell;
+    //         int rightCell = mesh_.faces[face].rightCell;
+    //         int node1 = mesh_.faces[face].n1;
+    //         int node2 = mesh_.faces[face].n2;
+    //         std::cout << "  Face: " << face << " Nodes: " << node1 << ", " << node2 << std::endl;
+    //         std::cout << "    u_L: " << uu[leftCell] << " v_L: " << vv[leftCell] << " p_L: " << pp[leftCell] << std::endl;
+    //         std::cout << "    u_R: " << uu[rightCell] << " v_R: " << vv[rightCell] << " p_R: " << pp[rightCell] << std::endl;
+    //         std::cout << "    F0: " << F0[face] << " F1: " << F1[face] << " F2: " << F2[face] << " F3: " << F3[face] << std::endl;
+    //     }
+    // }
 }
 
 void SpatialDiscretization::compute_diffusive_residuals() {
+    Rd0.assign(Rd0.size(), 0.0);
+    Rd1.assign(Rd1.size(), 0.0);
+    Rd2.assign(Rd2.size(), 0.0);
+    Rd3.assign(Rd3.size(), 0.0);
     for (auto face : mesh_.fluidFaces) {
         int leftCell = mesh_.faces[face].leftCell;
         int rightCell = mesh_.faces[face].rightCell;
@@ -728,25 +714,25 @@ void SpatialDiscretization::compute_diffusive_residuals() {
         Rd3[rightCell] -= D3[face];
     }
 
-    // for (auto face : mesh_.immersedBoundaryFaces) {
-    //     int leftCell = mesh_.faces[face].leftCell;
-    //     int rightCell = mesh_.faces[face].rightCell;
-    //     int leftCellType = mesh_.cell_types[leftCell];
-    //     int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
+    for (auto face : mesh_.immersedBoundaryFaces) {
+        int leftCell = mesh_.faces[face].leftCell;
+        int rightCell = mesh_.faces[face].rightCell;
+        int leftCellType = mesh_.cell_types[leftCell];
+        int fluidCell = (leftCellType == 1) ? leftCell : rightCell;
 
-    //     // Update residuals for fluid cell only
-    //     if (fluidCell == leftCell) {
-    //         Rd0[fluidCell] += D0[face];
-    //         Rd1[fluidCell] += D1[face];
-    //         Rd2[fluidCell] += D2[face];
-    //         Rd3[fluidCell] += D3[face];
-    //     } else {
-    //         Rd0[fluidCell] -= D0[face];
-    //         Rd1[fluidCell] -= D1[face];
-    //         Rd2[fluidCell] -= D2[face];
-    //         Rd3[fluidCell] -= D3[face];
-    //     }
-    // }
+        // Update residuals for fluid cell only
+        if (fluidCell == leftCell) {
+            Rd0[fluidCell] += D0[face];
+            Rd1[fluidCell] += D1[face];
+            Rd2[fluidCell] += D2[face];
+            Rd3[fluidCell] += D3[face];
+        } else {
+            Rd0[fluidCell] -= D0[face];
+            Rd1[fluidCell] -= D1[face];
+            Rd2[fluidCell] -= D2[face];
+            Rd3[fluidCell] -= D3[face];
+        }
+    }
 
     // for (auto face : mesh_.farfieldFaces) {
     //     int leftCell = mesh_.faces[face].leftCell;
