@@ -165,6 +165,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
     Eigen::ArrayXXd Rd20_0, Rd20_1, Rd20_2, Rd20_3;
     Eigen::ArrayXXd Rd42_0, Rd42_1, Rd42_2, Rd42_3;
     std::vector<std::vector<double>> Residuals;
+    std::vector<double> first_residuals = {0.0, 0.0, 0.0, 0.0};
     std::vector<int> iteration;
     
     Residuals = std::vector<std::vector<double>>{};
@@ -311,6 +312,14 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
         
 
             auto L2_norm = compute_L2_norm(dW_0, dW_1, dW_2, dW_3);
+            if (it == 0) {
+                first_residuals = {L2_norm(0), L2_norm(1), L2_norm(2), L2_norm(3)};
+            }
+            L2_norm(0) = L2_norm(0)/first_residuals[0];
+            L2_norm(1) = L2_norm(1)/first_residuals[1];
+            L2_norm(2) = L2_norm(2)/first_residuals[2];
+            L2_norm(3) = L2_norm(3)/first_residuals[3];
+
             iteration.push_back(it);
             Residuals.push_back({L2_norm(0), L2_norm(1), L2_norm(2), L2_norm(3)});
 

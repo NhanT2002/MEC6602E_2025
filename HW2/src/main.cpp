@@ -137,6 +137,7 @@ int main(int argc, char* argv[]) {
     iteration_residuals = std::vector<std::vector<double>>{};
     if (multigrid == 1) {        
         std::vector<std::vector<double>> Residuals;
+        std::vector<double> first_residuals;
 
         SpatialDiscretization h_state(x, y, rho, u, v, E, T, p, k2_coeff, k4_coeff, Mach, U_ref);
         Multigrid multigrid_solver(h_state, CFL_number, residual_smoothing, k2_coeff, k4_coeff);
@@ -165,45 +166,21 @@ int main(int argc, char* argv[]) {
         for (int it = 1; it < it_max; it++) {
             std::tie(W_0, W_1, W_2, W_3, Residuals) = multigrid_solver.restriction_timestep(h_state, 1, it);
 
-            // iteration_residuals.push_back({Residuals[0][0], Residuals[0][1], Residuals[0][2], Residuals[0][3]});
-            // auto end_time = std::chrono::high_resolution_clock::now(); // End timer
-            // std::chrono::duration<double> elapsed = end_time - start;
-            // iteration_times.push_back(elapsed.count());
+            if (it == 1) {
+                first_residuals = {Residuals[0][0], Residuals[0][1], Residuals[0][2], Residuals[0][3]};
+            }
+            // Normalize residuals
+            Residuals[0][0] = Residuals[0][0]/first_residuals[0];
+            Residuals[0][1] = Residuals[0][1]/first_residuals[1];
+            Residuals[0][2] = Residuals[0][2]/first_residuals[2];
+            Residuals[0][3] = Residuals[0][3]/first_residuals[3];
 
-            if (multigrid_solver.multigrid_convergence) {
+            iteration_residuals.push_back({Residuals[0][0], Residuals[0][1], Residuals[0][2], Residuals[0][3]});
+            auto end_time = std::chrono::high_resolution_clock::now(); // End timer
+            std::chrono::duration<double> elapsed = end_time - start;
+            iteration_times.push_back(elapsed.count());
 
-                // auto [W_0_vertex, W_1_vertex, W_2_vertex, W_3_vertex] = cell_dummy_to_vertex_centered_airfoil(W_0(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)),
-                //                                                                                   W_1(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)),
-                //                                                                                   W_2(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)),
-                //                                                                                   W_3(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)));
-                // std::ostringstream outputFile;
-                // outputFile << "output_files/output_Mach_" << std::fixed << std::setprecision(2) << Mach
-                //         << "_alpha_" << std::fixed << std::setprecision(2) << h_state.alpha*180/M_PI
-                //         << "_mesh_" << mesh_file.substr(mesh_file.find_last_of('/') + 1) << ".q";
-                // write_plot3d_2d(W_0_vertex, W_1_vertex, W_2_vertex, W_3_vertex, Mach, h_state.alpha, 0, 0, rho_inf, U_ref, outputFile.str());
-
-                // h_state.alpha += 0.1*M_PI/180;
-                // double u_inf = Vitesse*std::cos(h_state.alpha);
-                // double v_inf = Vitesse*std::sin(h_state.alpha);
-                // double u = u_inf/U_ref;
-                // double v = v_inf/U_ref;
-                // h_state.u = u;
-                // h_state.v = v;
-                // std::cout << "Converged at iteration: " << it << std::endl;
-                // std::cout << "alpha: " << h_state.alpha << std::endl;
-                // h2_state.alpha = h_state.alpha;
-                // h2_state.u = h_state.u;
-                // h2_state.v = h_state.v;
-                // h4_state.alpha = h_state.alpha;
-                // h4_state.u = h_state.u;
-                // h4_state.v = h_state.v;
-                // h8_state.alpha = h_state.alpha;
-                // h8_state.u = h_state.u;
-                // h8_state.v = h_state.v;
-                // it = 0;
-
-                
-
+            if (Residuals[0][0] < 1e-12) {             
                 break;
             }
             
@@ -240,12 +217,14 @@ int main(int argc, char* argv[]) {
 
             
         }
-        // save_time_residuals(iteration_times, iteration_residuals, checkpoint_file);
+        save_time_residuals(iteration_times, iteration_residuals, checkpoint_file);
     }
 
     else {
         TemporalDiscretization FVM(x, y, rho, u, v, E, T, p, Mach, U_ref, CFL_number, residual_smoothing, k2_coeff, k4_coeff);
         std::tie(W_0, W_1, W_2, W_3, iteration_residuals, iteration_times) = FVM.RungeKutta(it_max);
+        
+        save_time_residuals(iteration_times, iteration_residuals, checkpoint_file);
         // for (int i = 0; i < it_max; i++) {            
         //     std::tie(W_0, W_1, W_2, W_3, iteration_residuals, iteration_times) = FVM.RungeKutta(it_max);
         //     save_time_residuals(iteration_times, iteration_residuals, checkpoint_file);

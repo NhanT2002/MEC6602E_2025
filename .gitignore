@@ -5,6 +5,7 @@
 *.txt
 *.pdf
 *.csv
+*.q
 
 */bin/
 */build/
