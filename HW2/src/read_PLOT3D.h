@@ -40,6 +40,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd> c
 
 void save_time_residuals(const std::vector<double>& iteration_times,
                      const std::vector<std::vector<double>>& Residuals,
+                     const std::vector<std::vector<double>>& Coefficients,
                      const std::string& file_name = "checkpoint.txt");                                                                                                                    
 
 #endif //READ_PLOT3D_H

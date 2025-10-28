@@ -22,7 +22,7 @@ public:
     // Fine to coarse grid
     void restriction(SpatialDiscretization& h_state, SpatialDiscretization& h2_state);
 
-    std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, std::vector<std::vector<double>>> restriction_timestep(SpatialDiscretization& h_state, 
+    std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, std::vector<std::vector<double>>, std::vector<double>> restriction_timestep(SpatialDiscretization& h_state, 
                                                                                                                     int it_max, 
                                                                                                                     int current_iteration=0);
 

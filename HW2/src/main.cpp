@@ -132,11 +132,14 @@ int main(int argc, char* argv[]) {
 
     Eigen::ArrayXXd W_0, W_1, W_2, W_3;
     std::vector<std::vector<double>> iteration_residuals;
+    std::vector<std::vector<double>> Coefficients;
     std::vector<double> iteration_times;
     iteration_times = std::vector<double>{};
     iteration_residuals = std::vector<std::vector<double>>{};
     if (multigrid == 1) {        
         std::vector<std::vector<double>> Residuals;
+        std::vector<std::vector<double>> Coefficients;
+        std::vector<double> coeff;
         std::vector<double> first_residuals;
 
         SpatialDiscretization h_state(x, y, rho, u, v, E, T, p, k2_coeff, k4_coeff, Mach, U_ref);
@@ -164,7 +167,7 @@ int main(int argc, char* argv[]) {
         h_state.run_even();
         h_state.update_Rd0();
         for (int it = 1; it < it_max; it++) {
-            std::tie(W_0, W_1, W_2, W_3, Residuals) = multigrid_solver.restriction_timestep(h_state, 1, it);
+            std::tie(W_0, W_1, W_2, W_3, Residuals, coeff) = multigrid_solver.restriction_timestep(h_state, 1, it);
 
             if (it == 1) {
                 first_residuals = {Residuals[0][0], Residuals[0][1], Residuals[0][2], Residuals[0][3]};
@@ -176,6 +179,7 @@ int main(int argc, char* argv[]) {
             Residuals[0][3] = Residuals[0][3]/first_residuals[3];
 
             iteration_residuals.push_back({Residuals[0][0], Residuals[0][1], Residuals[0][2], Residuals[0][3]});
+            Coefficients.push_back(coeff);
             auto end_time = std::chrono::high_resolution_clock::now(); // End timer
             std::chrono::duration<double> elapsed = end_time - start;
             iteration_times.push_back(elapsed.count());
@@ -217,44 +221,14 @@ int main(int argc, char* argv[]) {
 
             
         }
-        save_time_residuals(iteration_times, iteration_residuals, checkpoint_file);
+        save_time_residuals(iteration_times, iteration_residuals, Coefficients, checkpoint_file);
     }
 
     else {
         TemporalDiscretization FVM(x, y, rho, u, v, E, T, p, Mach, U_ref, CFL_number, residual_smoothing, k2_coeff, k4_coeff);
-        std::tie(W_0, W_1, W_2, W_3, iteration_residuals, iteration_times) = FVM.RungeKutta(it_max);
-        
-        save_time_residuals(iteration_times, iteration_residuals, checkpoint_file);
-        // for (int i = 0; i < it_max; i++) {            
-        //     std::tie(W_0, W_1, W_2, W_3, iteration_residuals, iteration_times) = FVM.RungeKutta(it_max);
-        //     save_time_residuals(iteration_times, iteration_residuals, checkpoint_file);
+        std::tie(W_0, W_1, W_2, W_3, iteration_residuals, iteration_times, Coefficients) = FVM.RungeKutta(it_max);
 
-        //     auto [W_0_vertex, W_1_vertex, W_2_vertex, W_3_vertex] = cell_dummy_to_vertex_centered_airfoil(W_0(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)),
-        //                                                                                           W_1(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)),
-        //                                                                                           W_2(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)),
-        //                                                                                           W_3(Eigen::seq(1, W_0.rows()-2), Eigen::seq(1, W_0.cols()-2)));
-        //     std::ostringstream outputFile;
-        //     outputFile << "output_files/output_Mach_" << std::fixed << std::setprecision(2) << Mach
-        //             << "_alpha_" << std::fixed << std::setprecision(2) << FVM.current_state.alpha*180/M_PI
-        //             << "_mesh_" << mesh_file.substr(mesh_file.find_last_of('/') + 1) << ".q";
-        //     write_plot3d_2d(W_0_vertex, W_1_vertex, W_2_vertex, W_3_vertex, Mach, FVM.current_state.alpha, 0, 0, rho_inf, U_ref, outputFile.str());
-
-        //     if (FVM.current_state.alpha >= 17*M_PI/180) {
-        //         break;
-        //     }
-
-        //     FVM.current_state.alpha += 0.1*M_PI/180;
-        //     u_inf = Vitesse*std::cos(FVM.current_state.alpha);
-        //     v_inf = Vitesse*std::sin(FVM.current_state.alpha);
-        //     FVM.current_state.u = u_inf/U_ref;
-        //     FVM.current_state.v = v_inf/U_ref;
-
-        // }
-        
-        // SpatialDiscretization h_state(x, y, rho, u, v, E, T, p, k2_coeff, k4_coeff, Mach, U_ref);
-        // h_state.run_even();
-        // std::cout << "fluxy_0\n" << h_state.fluxy_0 << std::endl;
-        // std::cout << "fluxy_1\n" << h_state.fluxy_1 << std::endl;
+        save_time_residuals(iteration_times, iteration_residuals, Coefficients, checkpoint_file);
     }
 
     

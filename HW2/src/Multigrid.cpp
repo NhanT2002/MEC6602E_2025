@@ -267,7 +267,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd> M
     return {R_star_star_0.reshaped(dW_0.rows(), dW_0.cols()).array(), R_star_star_1.reshaped(dW_0.rows(), dW_0.cols()).array(), R_star_star_2.reshaped(dW_0.rows(), dW_0.cols()).array(), R_star_star_3.reshaped(dW_0.rows(), dW_0.cols()).array()};
 }
 
-std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, std::vector<std::vector<double>>> Multigrid::restriction_timestep(SpatialDiscretization& h_state, 
+std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, std::vector<std::vector<double>>, std::vector<double>> Multigrid::restriction_timestep(SpatialDiscretization& h_state, 
                                                                                                                     int it_max, 
                                                                                                                     int current_iteration) {
     double convergence_tol = 1e-11;
@@ -289,6 +289,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
     std::vector<int> iteration;
     
     Residuals = std::vector<std::vector<double>>{};
+    std::vector<double> coeff = {0.0, 0.0, 0.0};
     iteration = std::vector<int>{};
 
     auto seqy = Eigen::seq(2, h_state.ncells_y-3);
@@ -426,12 +427,18 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             
 
             if (current_iteration == 0) {
-                auto [C_l, C_d, C_m] = compute_coeff(h_state);           
+                auto [C_l, C_d, C_m] = compute_coeff(h_state);     
+                coeff[0] = C_l;
+                coeff[1] = C_d;
+                coeff[2] = C_m;
                 std::cout << "Iteration: " << it << " : L2_norms: " << L2_norm(0) << " " << L2_norm(1) << " " << L2_norm(2) << " " << L2_norm(3) << " ";
                 std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
             }
             else if (current_iteration > 0) {
-                auto [C_l, C_d, C_m] = compute_coeff(h_state);         
+                auto [C_l, C_d, C_m] = compute_coeff(h_state);
+                coeff[0] = C_l;
+                coeff[1] = C_d;
+                coeff[2] = C_m;
                 std::cout << "Iteration: " << current_iteration << " : L2_norms: " << L2_norm(0) << " " << L2_norm(1) << " " << L2_norm(2) << " " << L2_norm(3) << " ";
                 std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
             }
@@ -577,12 +584,18 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             Residuals.push_back({L2_norm(0), L2_norm(1), L2_norm(2), L2_norm(3)});
 
             if (current_iteration == 0) {
-                auto [C_l, C_d, C_m] = compute_coeff(h_state);           
+                auto [C_l, C_d, C_m] = compute_coeff(h_state);
+                coeff[0] = C_l;
+                coeff[1] = C_d;
+                coeff[2] = C_m;
                 std::cout << "Iteration: " << it << " : L2_norms: " << L2_norm(0) << " " << L2_norm(1) << " " << L2_norm(2) << " " << L2_norm(3) << " ";
                 std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
             }
             else if (current_iteration > 0) {
-                auto [C_l, C_d, C_m] = compute_coeff(h_state);         
+                auto [C_l, C_d, C_m] = compute_coeff(h_state);
+                coeff[0] = C_l;
+                coeff[1] = C_d;
+                coeff[2] = C_m;
                 std::cout << "Iteration: " << current_iteration << " : L2_norms: " << L2_norm(0) << " " << L2_norm(1) << " " << L2_norm(2) << " " << L2_norm(3) << " ";
                 std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
             }
@@ -595,7 +608,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
         }
     }
 
-    return {h_state.W_0, h_state.W_1, h_state.W_2, h_state.W_3, Residuals};                                                              
+    return {h_state.W_0, h_state.W_1, h_state.W_2, h_state.W_3, Residuals, coeff};                                                              
 }
 
 void Multigrid::prolongation(SpatialDiscretization& h2_state, SpatialDiscretization& h_state) {

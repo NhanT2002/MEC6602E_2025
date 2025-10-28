@@ -148,7 +148,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd> T
     return {R_star_star_0.reshaped(dW_0.rows(), dW_0.cols()).array(), R_star_star_1.reshaped(dW_0.rows(), dW_0.cols()).array(), R_star_star_2.reshaped(dW_0.rows(), dW_0.cols()).array(), R_star_star_3.reshaped(dW_0.rows(), dW_0.cols()).array()};
 }
 
-std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, std::vector<std::vector<double>>, std::vector<double>> TemporalDiscretization::RungeKutta(int it_max) {
+std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, std::vector<std::vector<double>>, std::vector<double>, std::vector<std::vector<double>>> TemporalDiscretization::RungeKutta(int it_max) {
     auto start = std::chrono::high_resolution_clock::now();
 
     double convergence_tol = 1e-11;
@@ -166,6 +166,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
     Eigen::ArrayXXd Rd42_0, Rd42_1, Rd42_2, Rd42_3;
     std::vector<std::vector<double>> Residuals;
     std::vector<double> first_residuals = {0.0, 0.0, 0.0, 0.0};
+    std::vector<std::vector<double>> Coefficients;
     std::vector<int> iteration;
     
     Residuals = std::vector<std::vector<double>>{};
@@ -330,6 +331,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             std::cout << "Iteration: " << it << " : L2_norms: " << L2_norm(0) << " " << L2_norm(1) << " " << L2_norm(2) << " " << L2_norm(3) << " ";
 
             auto [C_l, C_d, C_m] = compute_coeff();
+            Coefficients.push_back({C_l, C_d, C_m});
 
             std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
 
@@ -479,6 +481,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             std::cout << "Iteration: " << it << " : L2_norms: " << L2_norm(0) << " " << L2_norm(1) << " " << L2_norm(2) << " " << L2_norm(3) << " ";
 
             auto [C_l, C_d, C_m] = compute_coeff();
+            Coefficients.push_back({C_l, C_d, C_m});
 
             std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
 
@@ -490,7 +493,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
     }
 
 
-    return {current_state.W_0, current_state.W_1, current_state.W_2, current_state.W_3, Residuals, iteration_times};
+    return {current_state.W_0, current_state.W_1, current_state.W_2, current_state.W_3, Residuals, iteration_times, Coefficients};
 }
 
 std::tuple<double, double, double> TemporalDiscretization::compute_coeff() {

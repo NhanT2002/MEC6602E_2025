@@ -236,6 +236,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd> c
 
 void save_time_residuals(const std::vector<double>& iteration_times,
                         const std::vector<std::vector<double>>& Residuals,
+                        const std::vector<std::vector<double>>& Coefficients,
                         const std::string& file_name) {
     // Open the file
     std::ofstream file(file_name);
@@ -243,11 +244,20 @@ void save_time_residuals(const std::vector<double>& iteration_times,
         throw std::runtime_error("Could not open file: " + file_name);
     }
 
+    // write in double precision
+    file << std::scientific << std::setprecision(16);
+    // Write header
+    file << "Time, Residual_0, Residual_1, Residual_2, Residual_3, cl, cd, cm\n";
+
+
     // Write the residuals to the file
     for (size_t i = 0; i < Residuals.size(); ++i) {
         file << iteration_times[i] << ",";
         for (size_t j = 0; j < Residuals[i].size(); ++j) {
             file << Residuals[i][j] << ",";
+        }
+        for (size_t k = 0; k < Coefficients[i].size(); ++k) {
+            file << Coefficients[i][k] << ",";
         }
         file << "\n";
     }
