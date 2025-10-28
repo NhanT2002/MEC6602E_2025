@@ -4,9 +4,11 @@
 *.gif
 *.txt
 *.pdf
+*.csv
 
 */bin/
 */build/
+*old/
 
 # Compiled Object files
 *.slo
