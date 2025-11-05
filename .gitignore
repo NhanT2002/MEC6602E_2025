@@ -4,8 +4,8 @@
 *.gif
 *.txt
 *.pdf
-*.csv
 *.q
+__pycache__/
 
 */bin/
 */build/

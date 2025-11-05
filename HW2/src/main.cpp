@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
             std::chrono::duration<double> elapsed = end_time - start;
             iteration_times.push_back(elapsed.count());
 
-            if (Residuals[0][0] < 1e-12) {             
+            if (Residuals[0][0] < 1e-12 || std::isnan(Residuals[0][0])) {             
                 break;
             }
             
