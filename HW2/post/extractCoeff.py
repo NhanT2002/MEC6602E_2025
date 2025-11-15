@@ -11,7 +11,7 @@ for size in mesh_size :
     x, y = read_PLOT3D_mesh(f"../mesh/naca0012_{size}x{size}.xyz")
     ni, nj, mach, alpha, reyn, time, q_vertex = read_plot3d_2d(f"../output/output_M05_A0_{size}.q")
     cp_airfoil, C_L, C_D, C_M = compute_coeff(x, y, q_vertex, mach, alpha, T_inf=300, p_inf=1E5)
-    df_results_M05_A0.append({'Mesh Size': size, 'C_L': C_L, 'C_D': C_D, 'C_M': C_M})
+    df_results_M05_A0.append({'Mesh Size': size, 'C_l': C_L, 'C_d': C_D, 'C_m': C_M})
 df_results_M05_A0 = pd.DataFrame(df_results_M05_A0)
 df_results_M05_A0.to_csv("results_M05_A0.csv", index=False)
 
@@ -20,7 +20,7 @@ for size in mesh_size :
     x, y = read_PLOT3D_mesh(f"../mesh/naca0012_{size}x{size}.xyz")
     ni, nj, mach, alpha, reyn, time, q_vertex = read_plot3d_2d(f"../output/output_M05_A125_{size}.q")
     cp_airfoil, C_L, C_D, C_M = compute_coeff(x, y, q_vertex, mach, alpha, T_inf=300, p_inf=1E5)
-    df_results_M05_A125.append({'Mesh Size': size, 'C_L': C_L, 'C_D': C_D, 'C_M': C_M})
+    df_results_M05_A125.append({'Mesh Size': size, 'C_l': C_L, 'C_d': C_D, 'C_m': C_M})
 df_results_M05_A125 = pd.DataFrame(df_results_M05_A125)
 df_results_M05_A125.to_csv("results_M05_A125.csv", index=False)
 
@@ -29,7 +29,7 @@ for size in mesh_size :
     x, y = read_PLOT3D_mesh(f"../mesh/naca0012_{size}x{size}.xyz")
     ni, nj, mach, alpha, reyn, time, q_vertex = read_plot3d_2d(f"../output/output_M08_A0_{size}.q")
     cp_airfoil, C_L, C_D, C_M = compute_coeff(x, y, q_vertex, mach, alpha, T_inf=300, p_inf=1E5)
-    df_results_M08_A0.append({'Mesh Size': size, 'C_L': C_L, 'C_D': C_D, 'C_M': C_M})
+    df_results_M08_A0.append({'Mesh Size': size, 'C_l': C_L, 'C_d': C_D, 'C_m': C_M})
 df_results_M08_A0 = pd.DataFrame(df_results_M08_A0)
 df_results_M08_A0.to_csv("results_M08_A0.csv", index=False)
 
@@ -38,6 +38,6 @@ for size in mesh_size :
     x, y = read_PLOT3D_mesh(f"../mesh/naca0012_{size}x{size}.xyz")
     ni, nj, mach, alpha, reyn, time, q_vertex = read_plot3d_2d(f"../output/output_M08_A125_{size}.q")
     cp_airfoil, C_L, C_D, C_M = compute_coeff(x, y, q_vertex, mach, alpha, T_inf=300, p_inf=1E5)
-    df_results_M08_A125.append({'Mesh Size': size, 'C_L': C_L, 'C_D': C_D, 'C_M': C_M})
+    df_results_M08_A125.append({'Mesh Size': size, 'C_l': C_L, 'C_d': C_D, 'C_m': C_M})
 df_results_M08_A125 = pd.DataFrame(df_results_M08_A125)
 df_results_M08_A125.to_csv("results_M08_A125.csv", index=False)

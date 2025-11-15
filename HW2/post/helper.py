@@ -177,9 +177,7 @@ def compute_coeff(x, y, q, Mach, alpha, T_inf, p_inf, chord=1.00893):
     return cp_airfoil, C_L, C_D, C_M
 
 def read_residual_history(file_name):
-    data = pd.read_csv(file_name, sep=",")
-    # rename the columns for easier access
-    data.columns = ['Time', 'Residual_0', 'Residual_1', 'Residual_2', 'Residual_3', 'cl', 'cd', 'cm']
+    data = pd.read_csv(file_name, sep=", ")
     Time = data['Time'].values
     R0 = data['Residual_0'].values
     R1 = data['Residual_1'].values
@@ -189,3 +187,28 @@ def read_residual_history(file_name):
     cd = data['cd'].values
     cm = data['cm'].values
     return Time, R0, R1, R2, R3, cl, cd, cm
+
+
+def R(F_f, F_m, F_c) :
+    return (F_f - F_m) / (F_m - F_c)
+
+def G(F_f, F_m, F_c, p) :
+    return (4**p - 2**p)*R(F_f, F_m, F_c) - 2**p + 1
+
+def G_prime(F_f, F_m, F_c, p) :
+    return np.log(4)*(4**p)*R(F_f, F_m, F_c) - np.log(2)*(2**p)*(R(F_f, F_m, F_c) + 1)
+
+def compute_order(F_f, F_m, F_c, p_initial=2.0) :
+    p_hat = np.log((F_c - F_m)/(F_m - F_f))/np.log(2)
+    print(f"Initial estimate of order p: {p_hat}")
+    p = p_initial
+    error = 1.0
+    while error > 1E-6 :
+        G_val = G(F_f, F_m, F_c, p)
+        G_prime_val = G_prime(F_f, F_m, F_c, p)
+        p_new = p - G_val / G_prime_val
+        error = abs(p_new - p)
+        print(f"Current estimate of order p: {p_new}, error: {error}")
+        p = p_new
+    F_star = F_f + (F_f - F_m) / (2**p - 1)
+    return p, F_star

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from helper import read_PLOT3D_mesh, read_plot3d_2d, compute_coeff, read_residual_history
+from helper import read_PLOT3D_mesh, read_plot3d_2d, compute_coeff, read_residual_history, compute_order
 
 mesh_size = [8, 16, 32, 64, 128, 256, 512, 1024, 2048]
 
@@ -37,7 +37,7 @@ for a in ALPHA.keys() :
             plt.plot(df[2], df[3], color='tab:blue')
         ni, nj, mach, alpha, reyn, time, q_vertex = read_plot3d_2d(f"../output/output_M{MACH[m]}_A{ALPHA[a]}_1024.q")
         cp_airfoil, C_L, C_D, C_M = compute_coeff(x, y, q_vertex, mach, alpha, T_inf=300, p_inf=1E5)
-        plt.plot(x[0], cp_airfoil, '--', label="Euler Solver, k2 = 1/2, k4=1/64", color='tab:orange')
+        plt.plot(x[0], cp_airfoil, '--', label="Euler Solver 2048x2048", color='tab:orange')
         plt.gca().invert_yaxis()
         plt.legend()
         plt.xlabel("x")
@@ -45,6 +45,19 @@ for a in ALPHA.keys() :
         plt.title(f"NACA0012 Mach={m} alpha={a}°")
         plt.grid()
         plt.tight_layout()
+        plt.savefig(f"fig/NACA0012_M{MACH[m]}_A{ALPHA[a]}_Cp_comparison.pdf")
+
+def read_residual_history(file_name):
+    data = pd.read_csv(file_name, sep=",")
+    Time = data['Time'].values
+    R0 = data['Residual_0'].values
+    R1 = data['Residual_1'].values
+    R2 = data['Residual_2'].values
+    R3 = data['Residual_3'].values
+    cl = data['cl'].values
+    cd = data['cd'].values
+    cm = data['cm'].values
+    return Time, R0, R1, R2, R3, cl, cd, cm
 
 # Residual history plotting
 for a in ALPHA.keys() : 
@@ -66,28 +79,81 @@ results_M05_A0 = pd.read_csv("results_M05_A0.csv")
 results_M05_A125 = pd.read_csv("results_M05_A125.csv")
 results_M08_A0 = pd.read_csv("results_M08_A0.csv")
 results_M08_A125 = pd.read_csv("results_M08_A125.csv")
+results_M08_A125_Jameson = pd.read_csv("results_M08_A125_Jameson.csv")
 
-# Plot convergence of CD for M=0.5, alpha=0°
-
-def convergence_plot(results) :
+plt.rcParams.update({'font.size': 12})
+def convergence_plot(results, coef : str ='C_D') :
     plt.figure()
-    plt.loglog(1/results['Mesh Size'], results['C_D'], '-o')
+    
+    # compute the order of convergence and plot it
+    cd = np.array(results[coef])[-3:]
+    _, cd_star = compute_order(cd[-1], cd[-2], cd[-3])
+
+    # cd_star = cd[-1] + (cd[-1] - cd[-2]) / (2**2 - 1)
+    # errors = np.abs(results[coef][-2:] - cd_star)
+    # hs = 1 / results['Mesh Size'][-2:]
+
+    # plot the fit line with the last value matched
+    errors = np.abs(results[coef][-3:] - cd_star)
+    hs = 1 / results['Mesh Size'][-3:]
+
+    p = np.polyfit(np.log(hs), np.log(errors), 1)
+
+    plt.loglog(1/results['Mesh Size'], np.abs(results[coef]- cd_star), '-o')
     # add mesh size next to each point
     for i, size in enumerate(results['Mesh Size']) :
-        plt.text(1/size, results['C_D'][i], f"{size}", fontsize=8, ha='right', va='bottom')
+        plt.text(1/size, np.abs(results[coef]- cd_star)[i], f"{size}", fontsize=12, ha='right', va='bottom')
+    plt.loglog(1/results['Mesh Size'], np.exp(p[1]) * (1/results['Mesh Size'])**p[0], '--', label=f"Order = {p[0]:.3f}")
+    
     plt.legend()
     plt.xlabel("1 / NC")
-    plt.ylabel("$|C_D - C_D^*|$")
-    plt.xlim(1/3000, 1/5)
+    plt.ylabel(f"$|{coef} - {coef}^*|$")
+    plt.xlim(1/4000, 1/5)
     plt.grid()
-    # compute the order of convergence and plot it
-    CD_exact = 0
-    errors = np.abs(results['C_D'][-3:] - CD_exact)
-    hs = 1 / results['Mesh Size'][-3:]
-    p = np.polyfit(np.log(hs), np.log(errors), 1)
-    print(f"Order of convergence: {-p[0]:.2f}")
-    plt.loglog(1/results['Mesh Size'], np.exp(p[1]) * (1/results['Mesh Size'])**p[0], '--', label=f"Order = {p[0]:.2f}")
-    plt.legend()
+    plt.title(f"${coef}^*$ = {cd_star:.9f}")
 
-convergence_plot(results_M05_A0)
-convergence_plot(results_M05_A125)
+convergence_plot(results_M05_A0, coef='C_d')
+plt.savefig("fig/convergence_M05_A0_C_D.pdf")
+
+convergence_plot(results_M05_A125, coef='C_l')
+plt.savefig("fig/convergence_M05_A125_C_L.pdf")
+convergence_plot(results_M05_A125, coef='C_d')
+plt.savefig("fig/convergence_M05_A125_C_D.pdf")
+convergence_plot(results_M05_A125, coef='C_m')
+plt.savefig("fig/convergence_M05_A125_C_M.pdf")
+
+convergence_plot(results_M08_A0, coef='C_d')
+plt.savefig("fig/convergence_M08_A0_C_D.pdf")
+
+convergence_plot(results_M08_A125, coef='C_l')
+plt.savefig("fig/convergence_M08_A125_C_L.pdf")
+convergence_plot(results_M08_A125, coef='C_d')
+plt.savefig("fig/convergence_M08_A125_C_D.pdf")
+convergence_plot(results_M08_A125, coef='C_m')
+plt.savefig("fig/convergence_M08_A125_C_M.pdf")
+
+
+# Multigrid plot
+x, y = read_PLOT3D_mesh("../mesh/naca0012_512x512.xyz")
+Time_mg, R0_mg, R1_mg, R2_mg, R3_mg, cl_mg, cd_mg, cm_mg = read_residual_history(f"../output/residual_history_M12_A0_256_multigrid.txt")
+Time_rs, R0_rs, R1_rs, R2_rs, R3_rs, cl_rs, cd_rs, cm_rs = read_residual_history(f"../output/residual_history_M12_A0_256_res_smooth.txt")
+
+plt.figure()
+plt.semilogy(R0_mg, label="With Multigrid")
+plt.semilogy(R0_rs, label="Without Multigrid")
+plt.xlabel("Iterations")
+plt.ylabel("Residual continuity")
+plt.grid()
+plt.legend()
+plt.tight_layout()
+plt.savefig("fig/residual_multigrid_comparison.pdf")
+
+plt.figure()
+plt.semilogy(Time_mg, R0_mg, label="With Multigrid")
+plt.semilogy(Time_rs, R0_rs, label="Without Multigrid")
+plt.xlabel("Time (s)")
+plt.ylabel("Residual continuity")
+plt.grid()
+plt.legend()
+plt.tight_layout()
+plt.savefig("fig/residual_multigrid_comparison_time.pdf")
