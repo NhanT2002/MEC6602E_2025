@@ -73,6 +73,21 @@ for a in ALPHA.keys() :
         plt.legend()
         plt.tight_layout()
 
+# Residual history plotting
+for a in ALPHA.keys() : 
+    for m in MACH.keys() :
+        plt.figure()
+        for size in [8, 16, 32, 64, 128, 256, 512, 1024, 2048] :
+            Time, R0, R1, R2, R3, cl, cd, cm = read_residual_history(f"../residual_history/residual_history_M{MACH[m]}_A{ALPHA[a]}_{size}.txt")
+            plt.loglog(Time, R0, label=f"{size}x{size}")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Residual continuity")
+        plt.title(f"Residual history NACA0012 Mach={m} alpha={a}°")
+        plt.grid()
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f"fig/residual_history_NACA0012_M{MACH[m]}_A{ALPHA[a]}_loglog.pdf")
+
 
 # Read results
 results_M05_A0 = pd.read_csv("results_M05_A0.csv")
