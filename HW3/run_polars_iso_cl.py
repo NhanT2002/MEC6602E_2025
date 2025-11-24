@@ -7,14 +7,14 @@ import numpy as np
 
 # Configuration
 EXE = os.path.join("..", "HW2_iso_cl", "bin", "euler_solver")
-mesh = "crm_sharp_128"
+mesh = "sc20712"
 TEMPLATE = f"input_iso_cl.txt"  # template input file in this directory
 OUTDIR = f"solver_outputs_iso_cl/{mesh}"
 INPUTDIR = f"input_cases_iso_cl/{mesh}"
 # Angles of attack (degrees) and Mach numbers to sweep. Edit as needed.
 ANGLES = [0.0]
-MACHES = np.array([0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8])
-MACHES = np.array([0.8])
+# MACHES = np.array([0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8])
+MACHES = np.array([0.71, 0.72, 0.73, 0.74, 0.75, 0.76, 0.77, 0.78, 0.79, 0.8, 0.81, 0.82, 0.83, 0.84, 0.85])
 QUIET = True  # when True do not print solver stdout/stderr to console
 
 os.makedirs(OUTDIR, exist_ok=True)

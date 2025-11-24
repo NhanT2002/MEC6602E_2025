@@ -1,6 +1,7 @@
 # Prerequisites
 *.d
 
+*.dat
 *.gif
 *.txt
 *.q

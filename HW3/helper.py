@@ -135,6 +135,28 @@ class cell :
         
         self.R = np.array(4)
 
+def mach_airfoil(x, y, q, Mach, alpha, T_inf, p_inf, chord=1.00893):
+    a_inf = np.sqrt(1.4 * 287 * T_inf)  # Freestream speed of sound
+    U_inf = Mach * a_inf  # Freestream velocity magnitude
+    rho_inf = p_inf/(T_inf*287)
+    ny, nx, n = q.shape
+    
+    q_airfoil = np.zeros((nx, 6))
+    for i in range(nx) :
+        q_airfoil[i] = conservative_variable_from_W(q[0, i, :])
+    
+    # Cells generation
+    airfoil_cells = np.zeros((nx-1), dtype=object)
+    for i in range(nx-1) :
+        airfoil_cells[i] = cell(x[0, i], y[0, i], x[0, i+1], y[0, i+1], x[0+1, i+1], y[0+1, i+1], x[0+1, i], y[0+1, i], 0., 0., 0., 0.)
+    
+    cp_airfoil = (q_airfoil[:, 5] - p_inf)/(0.5*rho_inf*U_inf**2)
+    velocity_magnitude = np.sqrt((q_airfoil[:,1])**2 + (q_airfoil[:,2])**2)
+    a_airfoil = np.sqrt(1.4 * q_airfoil[:,5]/q_airfoil[:,0])
+    mach_airfoil = velocity_magnitude / a_airfoil
+
+    return mach_airfoil
+
 def compute_coeff(x, y, q, Mach, alpha, T_inf, p_inf, chord=1.00893):
     a_inf = np.sqrt(1.4 * 287 * T_inf)  # Freestream speed of sound
     U_inf = Mach * a_inf  # Freestream velocity magnitude

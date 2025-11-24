@@ -96,7 +96,7 @@ for mesh in MESHES :
     fig3.savefig(f"polars/{mesh}_moment_coefficient.pdf")
 
 # Mach polars at iso-cl
-for mesh in MESHES :
+for mesh in ["naca2412"] :
     C_L_iso_cl = []
     C_D_iso_cl = []
     C_M_iso_cl = []
@@ -136,6 +136,7 @@ for mesh in MESHES :
     plt.ylabel("$C_l$ at iso-$C_l$")
     plt.title(f"Lift Coefficient at iso-$C_l$ vs Mach Number for {mesh}")
     plt.grid()
+    plt.tight_layout()
     plt.savefig(f"polars/{mesh}_lift_coefficient_iso_cl.pdf")
 
     plt.figure()
@@ -144,6 +145,7 @@ for mesh in MESHES :
     plt.ylabel("$C_d$ at iso-$C_l$")
     plt.title(f"Drag Coefficient at iso-$C_l$ vs Mach Number for {mesh}")
     plt.grid()
+    plt.tight_layout()
     plt.savefig(f"polars/{mesh}_drag_coefficient_iso_cl.pdf")
 
     plt.figure()
@@ -152,6 +154,68 @@ for mesh in MESHES :
     plt.ylabel("$C_m$ at iso-$C_l$")
     plt.title(f"Moment Coefficient at iso-$C_l$ vs Mach Number for {mesh}")
     plt.grid()
+    plt.tight_layout()
     plt.savefig(f"polars/{mesh}_moment_coefficient_iso_cl.pdf")
 
-        
+
+# Mach polars at iso-cl
+for mesh in ["sc20712", "crm"] :
+    C_L_iso_cl = []
+    C_D_iso_cl = []
+    C_M_iso_cl = []
+    alpha_iso_cl = []
+    mach_values = []
+    
+    for mach in np.concatenate((np.arange(0.2, 0.75, 0.05), np.arange(0.71, 0.85, 0.01))) :
+        mach_str = f"{mach:.3f}"
+        # list files in /home/apollon/hitra2/MEC6602E/HW3/solver_outputs_iso_cl/crm/mach_0.200
+        file_list = os.listdir(f"solver_outputs_iso_cl/{mesh}/mach_{mach_str}")
+        # target the file that starts with residual_history_aoa_
+        for file_name in file_list :
+            if file_name.startswith("residual_history_aoa_") :
+                res_file = f"solver_outputs_iso_cl/{mesh}/mach_{mach_str}/{file_name}"
+                mach_, alpha_ = res_file.split(".txt")[0].split("_")[-2:]
+                mach = float(mach_.split("-")[-1])
+                alpha = float(alpha_.split("-")[-1])
+                Time, R0, R1, R2, R3, cl_res, cd_res, cm_res = read_residual_history(res_file)
+                C_L_iso_cl.append(cl_res[-1])
+                C_D_iso_cl.append(cd_res[-1])
+                C_M_iso_cl.append(cm_res[-1])
+                alpha_iso_cl.append(alpha)
+                mach_values.append(mach)
+
+    df_iso_cl = pd.DataFrame({
+        'mach': mach_values,
+        'alpha': alpha_iso_cl,
+        'cl': C_L_iso_cl,
+        'cd': C_D_iso_cl,
+        'cm': C_M_iso_cl
+    })
+    df_iso_cl.to_csv(f"polars/{mesh}_polar_iso_cl.csv", index=False)
+    
+    plt.figure()
+    plt.plot(mach_values, C_L_iso_cl, '-o')
+    plt.xlabel("Mach Number")
+    plt.ylabel("$C_l$ at iso-$C_l$")
+    plt.title(f"Lift Coefficient at iso-$C_l$ vs Mach Number for {mesh}")
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig(f"polars/{mesh}_lift_coefficient_iso_cl.pdf")
+
+    plt.figure()
+    plt.plot(mach_values, C_D_iso_cl, '-o')
+    plt.xlabel("Mach Number")
+    plt.ylabel("$C_d$ at iso-$C_l$")
+    plt.title(f"Drag Coefficient at iso-$C_l$ vs Mach Number for {mesh}")
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig(f"polars/{mesh}_drag_coefficient_iso_cl.pdf")
+
+    plt.figure()
+    plt.plot(mach_values, C_M_iso_cl, '-o')
+    plt.xlabel("Mach Number")
+    plt.ylabel("$C_m$ at iso-$C_l$")
+    plt.title(f"Moment Coefficient at iso-$C_l$ vs Mach Number for {mesh}")
+    plt.grid()
+    plt.tight_layout()
+    plt.savefig(f"polars/{mesh}_moment_coefficient_iso_cl.pdf")

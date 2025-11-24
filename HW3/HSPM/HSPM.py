@@ -6,7 +6,7 @@ from math import *
 
 class HSPM(object):
     """docstring for HSPM"""
-    def __init__(self, listOfPanels = None, alphaRange = [5.0], referencePoint=[0.0,0.0,0.0]):
+    def __init__(self, listOfPanels = None, alphaRange = [5.0], referencePoint=[0.25,0.0,0.0]):
         super(HSPM, self).__init__()
         self.size = len(listOfPanels)
         self.listOfPanels = listOfPanels
