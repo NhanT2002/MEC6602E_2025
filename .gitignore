@@ -3,7 +3,6 @@
 
 *.gif
 *.txt
-*.pdf
 *.q
 __pycache__/
 
