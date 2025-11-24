@@ -277,6 +277,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
     double a4 = 0.5; double b4 = 0.0;
     double a5 = 1.0; double b5 = 0.44;                                                                                                                    
     multigrid_convergence = false;
+    const double OMEGA = 0.5;
 
 
     Eigen::ArrayXXd dt;
@@ -312,16 +313,16 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
 
             // std::cout << "first stage : h_state.Rc_0 - Rd0_0 + h_state.forcing_function_0\n" << h_state.Rc_0 - Rd0_0 + h_state.forcing_function_0 << std::endl;
             dW_0 = -a1*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_0 - Rd0_0 + h_state.forcing_function_0);
-            h_state.W_0(seqy, seqx) = W0_0 + dW_0;
+            h_state.W_0(seqy, seqx) = W0_0 + OMEGA*dW_0;
 
             dW_1 = -a1*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_1 - Rd1_0 + h_state.forcing_function_1);
-            h_state.W_1(seqy, seqx) = W1_0 + dW_1;
+            h_state.W_1(seqy, seqx) = W1_0 + OMEGA*dW_1;
 
             dW_2 = -a1*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_2 - Rd2_0 + h_state.forcing_function_2);
-            h_state.W_2(seqy, seqx) = W2_0 + dW_2;
+            h_state.W_2(seqy, seqx) = W2_0 + OMEGA*dW_2;
 
             dW_3 = -a1*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_3 - Rd3_0 + h_state.forcing_function_3);
-            h_state.W_3(seqy, seqx) = W3_0 + dW_3;
+            h_state.W_3(seqy, seqx) = W3_0 + OMEGA*dW_3;
                   
             h_state.update_conservative_variables();
             h_state.run_odd();
@@ -333,16 +334,16 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             Rd3_0 = h_state.Rd_3;
 
             dW_0 = -a2*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_0 - Rd0_0 + h_state.forcing_function_0);
-            h_state.W_0(seqy, seqx) = W0_0 + dW_0;
+            h_state.W_0(seqy, seqx) = W0_0 + OMEGA*dW_0;
 
             dW_1 = -a2*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_1 - Rd1_0 + h_state.forcing_function_1);
-            h_state.W_1(seqy, seqx) = W1_0 + dW_1;
+            h_state.W_1(seqy, seqx) = W1_0 + OMEGA*dW_1;
 
             dW_2 = -a2*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_2 - Rd2_0 + h_state.forcing_function_2);
-            h_state.W_2(seqy, seqx) = W2_0 + dW_2;
+            h_state.W_2(seqy, seqx) = W2_0 + OMEGA*dW_2;
 
             dW_3 = -a2*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_3 - Rd3_0 + h_state.forcing_function_3);
-            h_state.W_3(seqy, seqx) = W3_0 + dW_3;
+            h_state.W_3(seqy, seqx) = W3_0 + OMEGA*dW_3;
         
             h_state.update_conservative_variables();
             h_state.run_even();
@@ -359,16 +360,16 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             h_state.Rd0_3 = Rd20_3;
 
             dW_0 = -a3*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_0 - Rd20_0 + h_state.forcing_function_0);
-            h_state.W_0(seqy, seqx) = W0_0 + dW_0;
+            h_state.W_0(seqy, seqx) = W0_0 + OMEGA*dW_0;
 
             dW_1 = -a3*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_1 - Rd20_1 + h_state.forcing_function_1);
-            h_state.W_1(seqy, seqx) = W1_0 + dW_1;
+            h_state.W_1(seqy, seqx) = W1_0 + OMEGA*dW_1;
 
             dW_2 = -a3*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_2 - Rd20_2 + h_state.forcing_function_2);
-            h_state.W_2(seqy, seqx) = W2_0 + dW_2;
+            h_state.W_2(seqy, seqx) = W2_0 + OMEGA*dW_2;
 
             dW_3 = -a3*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_3 - Rd20_3 + h_state.forcing_function_3);
-            h_state.W_3(seqy, seqx) = W3_0 + dW_3;
+            h_state.W_3(seqy, seqx) = W3_0 + OMEGA*dW_3;
 
             h_state.update_conservative_variables();
             h_state.run_odd();
@@ -380,16 +381,16 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             Rd20_3 = h_state.Rd0_3;
 
             dW_0 = -a4*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_0 - Rd20_0 + h_state.forcing_function_0);
-            h_state.W_0(seqy, seqx) = W0_0 + dW_0;
+            h_state.W_0(seqy, seqx) = W0_0 + OMEGA*dW_0;
 
             dW_1 = -a4*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_1 - Rd20_1 + h_state.forcing_function_1);
-            h_state.W_1(seqy, seqx) = W1_0 + dW_1;
+            h_state.W_1(seqy, seqx) = W1_0 + OMEGA*dW_1;
 
             dW_2 = -a4*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_2 - Rd20_2 + h_state.forcing_function_2);
-            h_state.W_2(seqy, seqx) = W2_0 + dW_2;
+            h_state.W_2(seqy, seqx) = W2_0 + OMEGA*dW_2;
 
             dW_3 = -a4*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_3 - Rd20_3 + h_state.forcing_function_3);
-            h_state.W_3(seqy, seqx) = W3_0 + dW_3;
+            h_state.W_3(seqy, seqx) = W3_0 + OMEGA*dW_3;
 
             h_state.update_conservative_variables();
             h_state.run_even();
@@ -406,16 +407,16 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             h_state.Rd0_3 = Rd42_3;
 
             dW_0 = -a5*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_0 - Rd42_0 + h_state.forcing_function_0);
-            h_state.W_0(seqy, seqx) = W0_0 + dW_0;
+            h_state.W_0(seqy, seqx) = W0_0 + OMEGA*dW_0;
 
             dW_1 = -a5*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_1 - Rd42_1 + h_state.forcing_function_1);
-            h_state.W_1(seqy, seqx) = W1_0 + dW_1;
+            h_state.W_1(seqy, seqx) = W1_0 + OMEGA*dW_1;
 
             dW_2 = -a5*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_2 - Rd42_2 + h_state.forcing_function_2);
-            h_state.W_2(seqy, seqx) = W2_0 + dW_2;
+            h_state.W_2(seqy, seqx) = W2_0 + OMEGA*dW_2;
 
             dW_3 = -a5*dt/h_state.OMEGA(seqy, seqx)*(h_state.Rc_3 - Rd42_3 + h_state.forcing_function_3);
-            h_state.W_3(seqy, seqx) = W3_0 + dW_3;
+            h_state.W_3(seqy, seqx) = W3_0 + OMEGA*dW_3;
 
             h_state.update_conservative_variables();
             h_state.run_odd();
@@ -476,10 +477,10 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             std::tie(R_star_star_0, R_star_star_1, R_star_star_2, R_star_star_3) = R_star(h_state, dW_0, dW_1, dW_2, dW_3);
 
             
-            h_state.W_0(seqy, seqx) = W0_0 - a1*R_star_star_0;
-            h_state.W_1(seqy, seqx) = W1_0 - a1*R_star_star_1;
-            h_state.W_2(seqy, seqx) = W2_0 - a1*R_star_star_2;
-            h_state.W_3(seqy, seqx) = W3_0 - a1*R_star_star_3;
+            h_state.W_0(seqy, seqx) = W0_0 - OMEGA*a1*R_star_star_0;
+            h_state.W_1(seqy, seqx) = W1_0 - OMEGA*a1*R_star_star_1;
+            h_state.W_2(seqy, seqx) = W2_0 - OMEGA*a1*R_star_star_2;
+            h_state.W_3(seqy, seqx) = W3_0 - OMEGA*a1*R_star_star_3;
                   
             h_state.update_conservative_variables();
             h_state.run_odd();
@@ -497,10 +498,10 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
 
             std::tie(R_star_star_0, R_star_star_1, R_star_star_2, R_star_star_3) = R_star(h_state, dW_0, dW_1, dW_2, dW_3);
 
-            h_state.W_0(seqy, seqx) = W0_0 - a2*R_star_star_0;
-            h_state.W_1(seqy, seqx) = W1_0 - a2*R_star_star_1;
-            h_state.W_2(seqy, seqx) = W2_0 - a2*R_star_star_2;
-            h_state.W_3(seqy, seqx) = W3_0 - a2*R_star_star_3;
+            h_state.W_0(seqy, seqx) = W0_0 - OMEGA*a2*R_star_star_0;
+            h_state.W_1(seqy, seqx) = W1_0 - OMEGA*a2*R_star_star_1;
+            h_state.W_2(seqy, seqx) = W2_0 - OMEGA*a2*R_star_star_2;
+            h_state.W_3(seqy, seqx) = W3_0 - OMEGA*a2*R_star_star_3;
         
             h_state.update_conservative_variables();
             h_state.run_even();
@@ -523,10 +524,10 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             
             std::tie(R_star_star_0, R_star_star_1, R_star_star_2, R_star_star_3) = R_star(h_state, dW_0, dW_1, dW_2, dW_3);
 
-            h_state.W_0(seqy, seqx) = W0_0 - a3*R_star_star_0;
-            h_state.W_1(seqy, seqx) = W1_0 - a3*R_star_star_1;
-            h_state.W_2(seqy, seqx) = W2_0 - a3*R_star_star_2;
-            h_state.W_3(seqy, seqx) = W3_0 - a3*R_star_star_3;
+            h_state.W_0(seqy, seqx) = W0_0 - OMEGA*a3*R_star_star_0;
+            h_state.W_1(seqy, seqx) = W1_0 - OMEGA*a3*R_star_star_1;
+            h_state.W_2(seqy, seqx) = W2_0 - OMEGA*a3*R_star_star_2;
+            h_state.W_3(seqy, seqx) = W3_0 - OMEGA*a3*R_star_star_3;
 
             h_state.update_conservative_variables();
             h_state.run_odd();
@@ -544,10 +545,10 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
 
             std::tie(R_star_star_0, R_star_star_1, R_star_star_2, R_star_star_3) = R_star(h_state, dW_0, dW_1, dW_2, dW_3);
 
-            h_state.W_0(seqy, seqx) = W0_0 - a4*R_star_star_0;
-            h_state.W_1(seqy, seqx) = W1_0 - a4*R_star_star_1;
-            h_state.W_2(seqy, seqx) = W2_0 - a4*R_star_star_2;
-            h_state.W_3(seqy, seqx) = W3_0 - a4*R_star_star_3;
+            h_state.W_0(seqy, seqx) = W0_0 - OMEGA*a4*R_star_star_0;
+            h_state.W_1(seqy, seqx) = W1_0 - OMEGA*a4*R_star_star_1;
+            h_state.W_2(seqy, seqx) = W2_0 - OMEGA*a4*R_star_star_2;
+            h_state.W_3(seqy, seqx) = W3_0 - OMEGA*a4*R_star_star_3;
 
             h_state.update_conservative_variables();
             h_state.run_even();
@@ -570,10 +571,10 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
             
             std::tie(R_star_star_0, R_star_star_1, R_star_star_2, R_star_star_3) = R_star(h_state, dW_0, dW_1, dW_2, dW_3);
 
-            h_state.W_0(seqy, seqx) = W0_0 - a5*R_star_star_0;
-            h_state.W_1(seqy, seqx) = W1_0 - a5*R_star_star_1;
-            h_state.W_2(seqy, seqx) = W2_0 - a5*R_star_star_2;
-            h_state.W_3(seqy, seqx) = W3_0 - a5*R_star_star_3;
+            h_state.W_0(seqy, seqx) = W0_0 - OMEGA*a5*R_star_star_0;
+            h_state.W_1(seqy, seqx) = W1_0 - OMEGA*a5*R_star_star_1;
+            h_state.W_2(seqy, seqx) = W2_0 - OMEGA*a5*R_star_star_2;
+            h_state.W_3(seqy, seqx) = W3_0 - OMEGA*a5*R_star_star_3;
 
             h_state.update_conservative_variables();
             h_state.run_odd();

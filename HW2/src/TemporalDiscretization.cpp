@@ -151,7 +151,7 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd> T
 std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, std::vector<std::vector<double>>, std::vector<double>, std::vector<std::vector<double>>> TemporalDiscretization::RungeKutta(int it_max) {
     auto start = std::chrono::high_resolution_clock::now();
 
-    double convergence_tol = 1e-11;
+    double convergence_tol = 1e-6;
     double a1 = 0.25; double b1 = 1.0;
     double a2 = 0.1667; double b2 = 0.0;
     double a3 = 0.3750; double b3 = 0.56;
@@ -335,8 +335,8 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
 
             std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
 
-            // Check for convergence
-            if (L2_norm(0) < convergence_tol) {
+            // Check for convergence and is is nan
+            if (L2_norm(0) < convergence_tol || std::isnan(L2_norm(0))) {
                 break;
             }
         }
@@ -485,8 +485,8 @@ std::tuple<Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, Eigen::ArrayXXd, s
 
             std::cout << "C_l: " << C_l << " C_d: " << C_d << " C_m: " << C_m << "\n";
 
-            // Check for convergence
-            if (L2_norm(0) < convergence_tol && L2_norm(1) < convergence_tol && L2_norm(2) < convergence_tol && L2_norm(3) < convergence_tol) {
+            // Check for convergence and if it is nan
+            if ((L2_norm(0) < convergence_tol || std::isnan(L2_norm(0)))) {
                 break;
             }
         }
